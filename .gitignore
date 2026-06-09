@@ -17,7 +17,8 @@ vendor/
 *.log
 *.sqlite3
 staticfiles/
-media/
+# Thư mục upload của Django (MEDIA_ROOT) ở gốc project — neo `/` để KHÔNG nuốt modules/media/
+/media/
 
 # Environment secrets (keep .env.example tracked)
 .env

@@ -35,6 +35,8 @@ INSTALLED_APPS = [
     "modules.base",
     "modules.core",
     "modules.example",
+    "modules.media",
+    "modules.chatbot",
 ]
 
 MIDDLEWARE = [
