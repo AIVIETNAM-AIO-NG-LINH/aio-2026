@@ -40,9 +40,6 @@ RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.t
 # Project source.
 COPY . .
 
-# Collect static files at build time so the production image is self-contained.
-RUN python manage.py collectstatic --noinput
-
 # Run as a non-root user.
 RUN chmod +x entrypoint.sh \
     && addgroup --system app \

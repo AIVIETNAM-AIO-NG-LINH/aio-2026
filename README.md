@@ -1,6 +1,6 @@
 # AI AIO — Django REST API
 
-API backend dùng **Django 5.2 (LTS)** + **Django REST Framework**, chạy trong **Docker** với database **MariaDB**. Production phục vụ bằng **Gunicorn** + **WhiteNoise** (static files).
+API backend dùng **Django 5.2 (LTS)** + **Django REST Framework** (API JSON thuần — không có admin / giao diện HTML), chạy trong **Docker** với database **MariaDB**. Production phục vụ bằng **Gunicorn**.
 
 ## Stack
 
@@ -11,7 +11,6 @@ API backend dùng **Django 5.2 (LTS)** + **Django REST Framework**, chạy trong
 | Database | MariaDB 11.4 |
 | Driver | mysqlclient |
 | WSGI server (prod) | Gunicorn |
-| Static files (prod) | WhiteNoise |
 | Config | django-environ (biến môi trường) |
 | Runtime | Python 3.13 (trong Docker) |
 
@@ -23,9 +22,16 @@ ai-aio/
 │   ├── settings.py
 │   ├── urls.py
 │   └── wsgi.py / asgi.py
-├── core/                   # App ví dụ — chứa health check endpoint
-│   ├── views.py            # GET /api/health/
-│   └── urls.py
+├── modules/                # Mỗi tính năng là 1 module (Django app)
+│   ├── core/               # health check — GET /api/health/
+│   │   ├── views.py
+│   │   └── urls.py
+│   └── example/            # MODULE MẪU (CRUD) — copy để tạo module mới
+│       ├── models.py
+│       ├── serializers.py
+│       ├── views.py        # ExampleViewSet (CRUD đầy đủ)
+│       ├── urls.py         # router DRF -> /api/examples/
+│       └── migrations/
 ├── manage.py
 ├── requirements.txt
 ├── Dockerfile              # multi-stage build (Python 3.13)
@@ -69,16 +75,14 @@ Khác với dev: dùng Gunicorn (3 workers), `DJANGO_DEBUG=False`, không mount 
 | Method | URL | Mô tả |
 |--------|-----|-------|
 | GET | `/api/health/` | Health check (app + kết nối DB) |
-| — | `/admin/` | Django admin |
+| GET · POST | `/api/examples/` | Module mẫu — list / create |
+| GET · PUT · PATCH · DELETE | `/api/examples/{id}/` | Module mẫu — chi tiết / sửa / xoá |
 
 ## Lệnh thường dùng
 
 ```bash
 # Xem log
 docker compose logs -f web
-
-# Tạo superuser cho /admin/
-docker compose exec web python manage.py createsuperuser
 
 # Tạo & chạy migrations sau khi thêm model
 docker compose exec web python manage.py makemigrations
@@ -92,15 +96,20 @@ docker compose down
 docker compose down -v
 ```
 
-## Thêm một API mới
+## Thêm một module mới
 
-1. Tạo app: `docker compose exec web python manage.py startapp <ten_app>`
-2. Thêm app vào `INSTALLED_APPS` trong [config/settings.py](config/settings.py)
-3. Viết model → `makemigrations` + `migrate`
-4. Viết serializer + view (DRF), khai báo route trong `urls.py` của app
-5. `include(...)` app vào [config/urls.py](config/urls.py)
+Cách nhanh nhất: **copy module mẫu** [modules/example/](modules/example/) rồi đổi tên.
 
-App [core/](core/) là ví dụ tối giản (chỉ có health endpoint) — copy theo mẫu đó.
+1. Copy: `cp -r modules/example modules/<ten_module>`
+2. Sửa `apps.py`: `name = "modules.<ten_module>"` (đổi luôn tên class config)
+3. Đổi tên model / serializer / viewset trong `models.py`, `serializers.py`, `views.py`
+4. Sửa `urls.py`: đổi prefix `router.register(r"<ten>", ...)`
+5. Xoá file migration cũ trong `modules/<ten_module>/migrations/` (giữ lại `__init__.py`)
+6. Đăng ký vào `INSTALLED_APPS` ([config/settings.py](config/settings.py)): thêm `"modules.<ten_module>"`
+7. Nối route trong [config/urls.py](config/urls.py): `path("api/", include("modules.<ten_module>.urls"))`
+8. Tạo migration: `docker compose exec web python manage.py makemigrations && ... migrate`
+
+Tham khảo: [modules/core/](modules/core/) là module tối giản (chỉ health endpoint), [modules/example/](modules/example/) là module CRUD đầy đủ dùng làm template.
 
 ## Biến môi trường
 
