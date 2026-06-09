@@ -36,6 +36,18 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      default: {}            # mạng nội bộ (db)
+      aio-net:               # shared network — nginx-aio gọi tới qua alias `ai-aio`
+        aliases:
+          - ai-aio
 
 volumes:
   mariadb_data:
+
+networks:
+  default: {}
+  # tạo trước 1 lần:  docker network create aio-net
+  aio-net:
+    external: true
+    name: aio-net
