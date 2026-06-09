@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     # Third-party
     "rest_framework",
     # Local modules (mỗi tính năng là 1 app trong modules/)
+    "modules.base",
     "modules.core",
     "modules.example",
 ]
@@ -105,6 +106,15 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
     ],
+    # Datetime trong JSON ra `Y-m-d H:i:s` (UTC+0) — tương đương
+    # ModelV2::serializeDate() bên Laravel, thay cho ISO-8601 mặc định của DRF.
+    # UTC nhờ TIME_ZONE="UTC" + USE_TZ=True ở trên (không setTimezone từng request).
+    "DATETIME_FORMAT": "%Y-%m-%d %H:%M:%S",
+    # Nhận input cả ISO-8601 lẫn `Y-m-d H:i:s` để round-trip an toàn.
+    "DATETIME_INPUT_FORMATS": ["iso-8601", "%Y-%m-%d %H:%M:%S"],
+    # Render ApiException / FailSuccessException của base module ra đúng shape FE
+    # (đóng vai render() của exception bên Laravel); lỗi khác để DRF xử lý mặc định.
+    "EXCEPTION_HANDLER": "modules.base.exception_handler.api_exception_handler",
 }
 
 # --- Security (only enforced when DEBUG is off) ----------------------------
