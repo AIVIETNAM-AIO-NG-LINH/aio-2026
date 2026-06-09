@@ -1,0 +1,25 @@
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose*.yml
+
+# Secrets — injected at runtime, never baked into the image
+.env
+
+# Python caches / local artifacts
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+staticfiles/
+media/
+*.sqlite3
+*.log
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+README.md

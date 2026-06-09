@@ -1,0 +1,17 @@
+# Web framework
+Django>=5.2,<5.3
+
+# REST API
+djangorestframework>=3.15,<3.17
+
+# MariaDB / MySQL driver (Django's recommended backend driver)
+mysqlclient>=2.2,<2.3
+
+# Production WSGI server
+gunicorn>=23.0,<24.0
+
+# Static file serving in production
+whitenoise>=6.7,<7.0
+
+# 12-factor environment variable handling
+django-environ>=0.11,<0.13
