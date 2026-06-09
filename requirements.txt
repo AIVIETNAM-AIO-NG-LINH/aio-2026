@@ -12,3 +12,6 @@ gunicorn>=23.0,<24.0
 
 # 12-factor environment variable handling
 django-environ>=0.11,<0.13
+
+# HTTP client cho gọi service nội bộ (api-aio qua reverse-proxy nginx:8080)
+requests>=2.31,<3

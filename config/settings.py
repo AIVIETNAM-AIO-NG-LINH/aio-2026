@@ -44,6 +44,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "modules.base.middleware.VerifyInternalToken",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -116,6 +117,12 @@ REST_FRAMEWORK = {
     # (đóng vai render() của exception bên Laravel); lỗi khác để DRF xử lý mặc định.
     "EXCEPTION_HANDLER": "modules.base.exceptions.api_exception_handler",
 }
+
+# --- Internal service-to-service (ai-aio ↔ api-aio qua nginx:8080) ----------
+# Secret dùng chung; `INTERNAL_TOKEN` PHẢI khớp .env của api-aio. Không gắn user.
+INTERNAL_TOKEN = env("INTERNAL_TOKEN", default="")
+INTERNAL_GATEWAY_URL = env("INTERNAL_GATEWAY_URL", default="http://nginx-aio:8080")
+INTERNAL_API_HOST = env("INTERNAL_API_HOST", default="api.localhost")
 
 # --- Security (only enforced when DEBUG is off) ----------------------------
 if not DEBUG:
