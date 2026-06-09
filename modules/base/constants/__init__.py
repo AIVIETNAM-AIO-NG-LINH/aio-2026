@@ -2,8 +2,12 @@
 
 Bên Laravel tên là `RES_FAILD` (typo gốc). Project mới dùng tên đúng chính tả
 `RES_FAILED`; giá trị giữ nguyên để shape response không đổi với FE.
+
+Import gọn: `from modules.base.constants import RES_SUCCESS, RES_FAILED`.
 """
 
 # Cờ `success` trong body response.
 RES_SUCCESS = 1
 RES_FAILED = 0
+
+__all__ = ["RES_SUCCESS", "RES_FAILED"]

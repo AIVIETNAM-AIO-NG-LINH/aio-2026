@@ -114,7 +114,7 @@ REST_FRAMEWORK = {
     "DATETIME_INPUT_FORMATS": ["iso-8601", "%Y-%m-%d %H:%M:%S"],
     # Render ApiException / FailSuccessException của base module ra đúng shape FE
     # (đóng vai render() của exception bên Laravel); lỗi khác để DRF xử lý mặc định.
-    "EXCEPTION_HANDLER": "modules.base.exception_handler.api_exception_handler",
+    "EXCEPTION_HANDLER": "modules.base.exceptions.api_exception_handler",
 }
 
 # --- Security (only enforced when DEBUG is off) ----------------------------

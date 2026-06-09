@@ -10,7 +10,7 @@ Giữ nguyên API V1 để shape response FE không đổi:
   - response_success_failed() — raise FailSuccessException: HTTP 200 nhưng body có
     `success: 0` cho fail nghiệp vụ (login sai, state không hợp lệ), không phải HTTP error.
 
-Các method raise dựa vào `exception_handler.api_exception_handler` (đăng ký ở
+Các method raise dựa vào `exceptions.api_exception_handler` (đăng ký ở
 REST_FRAMEWORK) để render — mirror cơ chế `render()` của exception bên Laravel.
 """
 

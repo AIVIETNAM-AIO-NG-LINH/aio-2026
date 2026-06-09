@@ -1,6 +1,6 @@
 """Exception nghiệp vụ — clone `App\\Exceptions\\Exception` & `ExceptionFailSuccess`.
 
-Cặp đôi với `exception_handler.api_exception_handler` (đăng ký ở
+Cặp đôi với `handler.api_exception_handler` (cùng package, đăng ký ở
 `REST_FRAMEWORK["EXCEPTION_HANDLER"]`) — handler đó đóng vai trò `render()` của
 exception bên Laravel: dựng JSON đúng shape rồi trả về.
 
@@ -15,7 +15,7 @@ from typing import Any
 from rest_framework import status as http_status
 from rest_framework.exceptions import APIException
 
-from .constants import RES_FAILED
+from ..constants import RES_FAILED
 
 
 class ApiException(APIException):
