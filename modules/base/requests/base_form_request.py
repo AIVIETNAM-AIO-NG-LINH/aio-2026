@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import enum
 import json
-from typing import Any, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Optional, Type, TypeVar
 
 from rest_framework import serializers
 
@@ -39,8 +39,20 @@ from ..exceptions import RequestValidationException
 
 TEnum = TypeVar("TEnum", bound=enum.Enum)
 
+if TYPE_CHECKING:
+    from rest_framework.request import Request
+    from rest_framework.views import APIView
 
-class FormRequestMixin:
+    # CHỈ lúc type-check: coi mixin như một Serializer để `super().is_valid()`,
+    # `self.errors`, `self.context`, `self.initial_data`, `self.validated_data`...
+    # được nhận diện đúng kiểu (thay vì `Any`). Runtime base vẫn là `object` — class
+    # con tự trộn `Serializer`/`ModelSerializer` thật nên không đụng metaclass/MRO.
+    _SerializerBase = serializers.Serializer
+else:
+    _SerializerBase = object
+
+
+class FormRequestMixin(_SerializerBase):
     """Helper + reshape lỗi 422 — trộn với bất kỳ Serializer/ModelSerializer nào."""
 
     #: Message cho lỗi 422 (override hoặc bọc gettext để i18n).
@@ -48,7 +60,7 @@ class FormRequestMixin:
 
     def is_valid(self, *, raise_exception: bool = False) -> bool:
         """Như DRF nhưng khi fail + raise thì ném `RequestValidationException` (422 shape V1)."""
-        valid = super().is_valid(raise_exception=False)
+        valid: bool = super().is_valid(raise_exception=False)
         if not valid and raise_exception:
             raise RequestValidationException(
                 fields=self._first_errors(),
@@ -70,18 +82,24 @@ class FormRequestMixin:
 
     def route_id(self) -> int:
         """≈ `routeId()` — id resource từ URL; 0 nghĩa là create."""
-        view = self.context.get("view")
-        raw = None
-        if view is not None:
-            raw = view.kwargs.get("id", view.kwargs.get("pk"))
+        view: Optional[APIView] = self.context.get("view")
+        if view is None:
+            return 0
+        # view.kwargs là `dict[str, Any]` (path param không có kiểu tĩnh). Coi value
+        # là `object` để CHÍNH `.get()` được type-hint thành `object` (hết `Any`),
+        # rồi narrow bằng isinstance trước khi int().
+        kwargs: dict[str, object] = view.kwargs
+        raw = kwargs.get("id", kwargs.get("pk"))
+        if not isinstance(raw, (str, int)):
+            return 0
         try:
             return int(raw)
-        except (TypeError, ValueError):
+        except ValueError:
             return 0
 
     def is_creating(self) -> bool:
         """≈ `isCreating()` — create = POST."""
-        request = self.context.get("request")
+        request: Optional[Request] = self.context.get("request")
         return bool(request and request.method == "POST")
 
     def is_updating(self) -> bool:
