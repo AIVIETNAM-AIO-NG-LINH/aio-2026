@@ -15,3 +15,7 @@ django-environ>=0.11,<0.13
 
 # HTTP client cho gọi service nội bộ (api-aio qua reverse-proxy nginx:8080)
 requests>=2.31,<3
+
+# Worker nền cho pipeline ingest (broker/result backend = redis dùng chung ở nginx-aio)
+celery>=5.4,<5.5
+redis>=5.0,<6

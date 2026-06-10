@@ -126,6 +126,17 @@ INTERNAL_TOKEN = env("INTERNAL_TOKEN", default="")
 INTERNAL_GATEWAY_URL = env("INTERNAL_GATEWAY_URL", default="http://nginx-aio:8080")
 INTERNAL_API_HOST = env("INTERNAL_API_HOST", default="api.localhost")
 
+# --- Celery (worker nền cho pipeline ingest) -------------------------------
+# Broker + result backend = redis dùng chung trong stack nginx-aio (trên aio-net).
+# DB 0 cho broker, DB 1 cho result để tách không gian key. Đổi qua env nếu cần.
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://redis:6379/0")
+CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="redis://redis:6379/1")
+# Serializer JSON (tránh pickle) + timezone đồng bộ với Django.
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+
 # --- Security (only enforced when DEBUG is off) ----------------------------
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

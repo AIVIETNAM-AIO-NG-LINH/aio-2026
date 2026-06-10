@@ -20,6 +20,22 @@ services:
         aliases:
           - ai-aio
 
+  # Celery worker — đọc task từ redis broker, chạy pipeline ingest nền.
+  worker:
+    build: .
+    restart: unless-stopped
+    # Chờ-DB + migrate là việc của `web`; worker bỏ qua entrypoint, chạy thẳng celery.
+    entrypoint: []
+    command: celery -A config worker --loglevel=info
+    env_file: .env
+    environment:
+      DB_HOST: db          # alias MariaDB dùng chung (ở nginx-aio)
+    volumes:
+      # Mount source để code worker đồng bộ với web khi dev (restart để áp dụng).
+      - .:/app
+    networks:
+      - aio-net            # cần aio-net để tới redis (broker) + db dùng chung
+
 networks:
   # tạo trước 1 lần:  docker network create aio-net
   aio-net:
