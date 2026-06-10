@@ -77,6 +77,7 @@ Khác với dev: dùng Gunicorn (3 workers), `DJANGO_DEBUG=False`, không mount 
 | GET | `/api/health/` | Health check (app + kết nối DB) |
 | GET · POST | `/api/examples/` | Module mẫu — list / create |
 | GET · PUT · PATCH · DELETE | `/api/examples/{id}/` | Module mẫu — chi tiết / sửa / xoá |
+| POST | `/api/internal/chatbot/documents/ingest` | Nội bộ — nhận `{document_id}`, enqueue ingest → `202` (gate bằng `X-Internal-Token`) |
 
 ## Lệnh thường dùng
 
@@ -90,6 +91,10 @@ docker compose exec web python manage.py migrate
 
 # Django shell
 docker compose exec web python manage.py shell
+
+# Celery worker (chạy nền cho ingest) — service `worker` đã có trong compose,
+# tự lên cùng `docker compose up`. Xem log riêng:
+docker compose logs -f worker
 
 # Dừng (giữ data) / dừng và xoá data
 docker compose down
