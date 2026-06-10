@@ -10,8 +10,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .requests import IngestDocumentRequest
-from .services import IngestDocumentService
+from .requests import IngestDocumentRequest, RetrieveRequest
+from .services import IngestDocumentService, RetrieveService
 
 
 class IngestDocumentView(APIView):
@@ -21,3 +21,15 @@ class IngestDocumentView(APIView):
         form = IngestDocumentRequest(data=request.data)
         form.is_valid(raise_exception=True)  # fail → 422 shape V1 qua exception handler.
         return IngestDocumentService().ingest(form.to_dto())
+
+
+class RetrieveView(APIView):
+    """POST retrieve — nhận `{query, top_k?, top_n?}`, trả top_k chunk đã xếp hạng.
+
+    Truy hồi đồng bộ (hybrid + rerank), KHÔNG sinh câu trả lời LLM — caller tự sinh.
+    """
+
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        form = RetrieveRequest(data=request.data)
+        form.is_valid(raise_exception=True)  # fail → 422 shape V1 qua exception handler.
+        return RetrieveService().retrieve(form.to_dto())
