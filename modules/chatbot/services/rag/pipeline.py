@@ -15,6 +15,7 @@ import logging
 from .chunker import PageChunk, chunk_pages
 from .config import (
     ChunkConfig,
+    ContextualHeaderConfig,
     GeminiConfig,
     LightRagConfig,
     OpenSearchConfig,
@@ -135,6 +136,7 @@ def run_ingest_pipeline(document_id: int) -> None:
         s3_config = S3Config.from_env()
         gemini_config = GeminiConfig.from_env()
         chunk_config = ChunkConfig.from_env()
+        header_config = ContextualHeaderConfig.from_env()
         opensearch_config = OpenSearchConfig.from_env()
 
         # 1) Tải file gốc từ S3.
@@ -148,8 +150,12 @@ def run_ingest_pipeline(document_id: int) -> None:
             _set_status(document_id, DocumentStatus.FAILED)
             return
 
-        # 3) Chunk THEO TRANG (mỗi chunk mang số trang) + 4) embed text từng chunk.
-        chunks = chunk_pages(pages, media.original_name, chunk_config)
+        # 3) Chunk THEO TRANG (mỗi chunk mang số trang + contextual header) +
+        #    4) embed text từng chunk. Header (kèm `kind`) đã nằm trong chunk.text
+        #    nên vừa vào vector lúc embed, vừa lưu nguyên trong chunk_text ở index.
+        chunks = chunk_pages(
+            pages, media.original_name, chunk_config, kind=kind, header_config=header_config
+        )
         embedded = embed_chunks(
             [chunk.text for chunk in chunks], opensearch_config.vector_dims, gemini_config
         )
