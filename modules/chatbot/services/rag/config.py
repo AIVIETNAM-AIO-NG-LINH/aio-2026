@@ -70,12 +70,15 @@ class GeminiConfig:
 
     api_key: str
     embedding_model: str
+    extract_model: str
 
     @classmethod
     def from_env(cls) -> "GeminiConfig":
         return cls(
             api_key=_env("GEMINI_API_KEY"),
             embedding_model=_env("EMBEDDING_MODEL", default="text-embedding-004"),
+            # Model multimodal đọc PDF → text. Override qua env nếu Google đổi tên.
+            extract_model=_env("GEMINI_EXTRACT_MODEL", default="gemini-2.5-flash"),
         )
 
 
