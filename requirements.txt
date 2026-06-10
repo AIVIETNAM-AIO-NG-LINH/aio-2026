@@ -37,3 +37,7 @@ lightrag-hku>=1.3,<2
 neo4j>=5.14,<6
 # Driver PostgreSQL async cho PG KV/Vector/DocStatus storage của LightRAG.
 asyncpg>=0.29,<0.31
+
+# --- Pipeline RAG (Phase 4 — trích dẫn theo trang) ---
+# Duyệt/tách trang PDF để gắn số trang vào chunk (pure-python, không cần system dep).
+pypdf>=4.0,<6
