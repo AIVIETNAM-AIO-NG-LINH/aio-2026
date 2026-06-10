@@ -71,6 +71,7 @@ class GeminiConfig:
     api_key: str
     embedding_model: str
     extract_model: str
+    summary_model: str
 
     @classmethod
     def from_env(cls) -> "GeminiConfig":
@@ -79,6 +80,8 @@ class GeminiConfig:
             embedding_model=_env("EMBEDDING_MODEL", default="text-embedding-004"),
             # Model multimodal đọc PDF → text. Override qua env nếu Google đổi tên.
             extract_model=_env("GEMINI_EXTRACT_MODEL", default="gemini-2.5-flash"),
+            # Model Flash sinh tóm tắt (summary index) + trích entity (LightRAG).
+            summary_model=_env("GEMINI_SUMMARY_MODEL", default="gemini-2.5-flash"),
         )
 
 
@@ -106,6 +109,7 @@ class OpenSearchConfig:
     password: str
     verify_certs: bool
     index: str
+    summary_index: str
     vector_dims: int
 
     @classmethod
@@ -116,5 +120,39 @@ class OpenSearchConfig:
             password=_env("OPENSEARCH_PASSWORD"),
             verify_certs=_env_bool("OPENSEARCH_VERIFY_CERTS", default=False),
             index=_env("OPENSEARCH_INDEX", default="rag-index"),
+            # Index riêng 1-doc-mỗi-tài-liệu cho tóm tắt + vector (Phase 2).
+            summary_index=_env("OPENSEARCH_SUMMARY_INDEX", default="document-summary-index"),
             vector_dims=_env_int("OPENSEARCH_VECTOR_DIMS", default=768),
+        )
+
+
+@dataclass(frozen=True)
+class LightRagConfig:
+    """Tham số LightRAG (knowledge graph) — PG (KV/Vector/DocStatus) + Neo4j (graph).
+
+    Mặc định `enabled=False` để pipeline bỏ qua hẳn KG khi chưa có hạ tầng PG/Neo4j.
+    """
+
+    enabled: bool
+    pg_host: str
+    pg_port: int
+    pg_user: str
+    pg_password: str
+    pg_database: str
+    neo4j_uri: str
+    neo4j_username: str
+    neo4j_password: str
+
+    @classmethod
+    def from_env(cls) -> "LightRagConfig":
+        return cls(
+            enabled=_env_bool("LIGHTRAG_ENABLED", default=False),
+            pg_host=_env("LIGHTRAG_PG_HOST", default="postgres"),
+            pg_port=_env_int("LIGHTRAG_PG_PORT", default=5432),
+            pg_user=_env("LIGHTRAG_PG_USER", default="postgres"),
+            pg_password=_env("LIGHTRAG_PG_PASSWORD"),
+            pg_database=_env("LIGHTRAG_PG_DATABASE", default="lightrag"),
+            neo4j_uri=_env("LIGHTRAG_NEO4J_URI", default="bolt://neo4j:7687"),
+            neo4j_username=_env("LIGHTRAG_NEO4J_USERNAME", default="neo4j"),
+            neo4j_password=_env("LIGHTRAG_NEO4J_PASSWORD"),
         )
