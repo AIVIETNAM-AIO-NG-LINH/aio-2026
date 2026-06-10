@@ -25,8 +25,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DJANGO_SETTINGS_MODULE=config.settings
 
+# libmariadb3: shared lib cho mysqlclient. libreoffice-writer: convert
+# Word(.doc/.docx)→PDF headless trong pipeline RAG (worker chạy `soffice`).
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libmariadb3 \
+        libreoffice-writer \
+        default-jre-headless \
+        fonts-dejavu \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
