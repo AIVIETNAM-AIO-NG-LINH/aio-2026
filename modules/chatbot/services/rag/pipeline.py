@@ -13,12 +13,20 @@ from __future__ import annotations
 import logging
 
 from .chunker import chunk_text
-from .config import ChunkConfig, GeminiConfig, OpenSearchConfig, S3Config
+from .config import (
+    ChunkConfig,
+    GeminiConfig,
+    LightRagConfig,
+    OpenSearchConfig,
+    S3Config,
+)
 from .embedder import embed_chunks
 from .exceptions import UnsupportedDocumentError
 from .extractor import KIND_OTHER, detect_kind, extract_text
+from .lightrag_client import index_lightrag
 from .opensearch_indexer import OpenSearchIndexer
 from .s3_reader import S3Reader
+from .summary_indexer import SummaryIndexer
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +41,38 @@ def _set_status(document_id: int, status: str) -> None:
     updated = ChatbotDocument.objects.filter(pk=document_id).update(status=status)
     if not updated:
         logger.warning("[pipeline] document_id=%s không tồn tại khi set %s", document_id, status)
+
+
+def _index_summary_safe(
+    document_id: int,
+    media_id: int,
+    text: str,
+    opensearch_config: OpenSearchConfig,
+    gemini_config: GeminiConfig,
+) -> None:
+    """Index summary (Phase 2) — nuốt mọi lỗi để không ảnh hưởng status READY."""
+    try:
+        SummaryIndexer(opensearch_config, gemini_config).index_summary(
+            document_id, media_id, text
+        )
+    except Exception:
+        logger.exception(
+            "[pipeline] document_id=%s lỗi index summary (bỏ qua, vẫn READY)", document_id
+        )
+
+
+def _index_lightrag_safe(
+    document_id: int,
+    text: str,
+    gemini_config: GeminiConfig,
+) -> None:
+    """Index LightRAG/KG (Phase 2) — fail-safe, tự bỏ qua nếu LIGHTRAG_ENABLED=false."""
+    try:
+        index_lightrag(document_id, text, LightRagConfig.from_env(), gemini_config)
+    except Exception:
+        logger.exception(
+            "[pipeline] document_id=%s lỗi index LightRAG (bỏ qua, vẫn READY)", document_id
+        )
 
 
 def run_ingest_pipeline(document_id: int) -> None:
@@ -105,7 +145,12 @@ def run_ingest_pipeline(document_id: int) -> None:
         }
         indexed = OpenSearchIndexer(opensearch_config).index_document(parent_meta, embedded)
 
-        # 6) Thành công.
+        # 6) Phần phụ Phase 2 — fail-safe: lỗi KHÔNG đổi status sang FAILED, chỉ log.
+        #    Chạy sau khi rag-index chính đã xong (tài liệu coi như thành công).
+        _index_summary_safe(document_id, media.pk, text, opensearch_config, gemini_config)
+        _index_lightrag_safe(document_id, text, gemini_config)
+
+        # 7) Thành công (phần chính đã index xong → READY bất kể summary/KG).
         _set_status(document_id, DocumentStatus.READY)
         logger.info(
             "[pipeline] document_id=%s READY (%d chunk đã index)", document_id, indexed
