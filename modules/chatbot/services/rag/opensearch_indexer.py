@@ -61,8 +61,12 @@ class OpenSearchIndexer:
                     },
                     "mime_type": {"type": "keyword"},
                     "file_type": {"type": "keyword"},
+                    # Tổng số trang của tài liệu (Phase 4, trên parent).
+                    "page_count": {"type": "integer"},
                     # Child fields (chunk + vector).
                     "chunk_text": {"type": "text"},
+                    # Số trang nguồn của chunk (Phase 4, từ 1) — phục vụ trích dẫn.
+                    "page": {"type": "integer"},
                     "chunk_vector": {
                         "type": "knn_vector",
                         "dimension": self._config.vector_dims,
@@ -89,11 +93,13 @@ class OpenSearchIndexer:
     def index_document(
         self,
         parent_meta: dict[str, Any],
-        children: list[tuple[str, list[float]]],
+        children: list[tuple[str, list[float], int | None]],
     ) -> int:
         """Ghi 1 tài liệu (idempotent): xoá bản cũ → index parent → bulk children.
 
-        `parent_meta` chứa document_id/media_id/original_name/mime_type/file_type.
+        `parent_meta` chứa document_id/media_id/original_name/mime_type/file_type
+        (+ page_count nếu có). Mỗi child là (chunk_text, chunk_vector, page) với
+        `page` là số trang nguồn (từ 1, có thể None nếu không xác định được).
         Trả về số child đã index.
         """
         self.ensure_index()
@@ -122,10 +128,11 @@ class OpenSearchIndexer:
                 "_source": {
                     "chunk_text": chunk_text,
                     "chunk_vector": chunk_vector,
+                    "page": page,
                     JOIN_FIELD: {"name": CHILD_RELATION, "parent": parent_id},
                 },
             }
-            for i, (chunk_text, chunk_vector) in enumerate(children)
+            for i, (chunk_text, chunk_vector, page) in enumerate(children)
         ]
         if actions:
             helpers.bulk(self._client, actions)

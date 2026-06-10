@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 
-from .chunker import chunk_text
+from .chunker import PageChunk, chunk_pages
 from .config import (
     ChunkConfig,
     GeminiConfig,
@@ -22,7 +22,7 @@ from .config import (
 )
 from .embedder import embed_chunks
 from .exceptions import UnsupportedDocumentError
-from .extractor import KIND_OTHER, detect_kind, extract_text
+from .extractor import KIND_OTHER, detect_kind, extract_pages, pages_to_text
 from .lightrag_client import index_lightrag
 from .opensearch_indexer import OpenSearchIndexer
 from .s3_reader import S3Reader
@@ -75,6 +75,28 @@ def _index_lightrag_safe(
         )
 
 
+def _attach_pages(
+    chunks: list[PageChunk],
+    embedded: list[tuple[str, list[float]]],
+) -> list[tuple[str, list[float], int | None]]:
+    """Gắn lại số trang cho từng (text, vector) sau bước embed.
+
+    `embed_chunks` giữ NGUYÊN thứ tự và chỉ loại bớt chunk sai số chiều, nên kết
+    quả là một dãy con (subsequence) đúng thứ tự của `chunks`. Quét tịnh tiến để
+    khớp text → trang; chịu được cả khi text trùng nhau giữa các trang.
+    """
+    children: list[tuple[str, list[float], int | None]] = []
+    cursor = 0
+    total = len(chunks)
+    for text, vector in embedded:
+        while cursor < total and chunks[cursor].text != text:
+            cursor += 1
+        page = chunks[cursor].page if cursor < total else None
+        children.append((text, vector, page))
+        cursor += 1
+    return children
+
+
 def run_ingest_pipeline(document_id: int) -> None:
     """Chạy toàn bộ pipeline ingest cho 1 chatbot_documents.id."""
     from modules.chatbot.enums import DocumentStatus
@@ -118,16 +140,19 @@ def run_ingest_pipeline(document_id: int) -> None:
         # 1) Tải file gốc từ S3.
         file_bytes = S3Reader(s3_config).read_bytes(media.file_name)
 
-        # 2) Trích text (PDF qua Gemini; Word -> UnsupportedDocumentError ở Phase 1).
-        text = extract_text(file_bytes, kind, media.mime_type, gemini_config)
+        # 2) Trích text THEO TRANG (PDF/Word qua extractor lai pypdf + Gemini OCR).
+        pages = extract_pages(file_bytes, kind, media.mime_type, gemini_config)
+        text = pages_to_text(pages)  # full-text cho summary/LightRAG
         if not text.strip():
             logger.warning("[pipeline] document_id=%s trích ra text rỗng -> FAILED", document_id)
             _set_status(document_id, DocumentStatus.FAILED)
             return
 
-        # 3) Chunk + 4) embed.
-        chunks = chunk_text(text, media.original_name, chunk_config)
-        embedded = embed_chunks(chunks, opensearch_config.vector_dims, gemini_config)
+        # 3) Chunk THEO TRANG (mỗi chunk mang số trang) + 4) embed text từng chunk.
+        chunks = chunk_pages(pages, media.original_name, chunk_config)
+        embedded = embed_chunks(
+            [chunk.text for chunk in chunks], opensearch_config.vector_dims, gemini_config
+        )
         if not embedded:
             logger.warning(
                 "[pipeline] document_id=%s không có chunk embed hợp lệ -> FAILED", document_id
@@ -135,15 +160,19 @@ def run_ingest_pipeline(document_id: int) -> None:
             _set_status(document_id, DocumentStatus.FAILED)
             return
 
-        # 5) Index parent-child vào OpenSearch (idempotent).
+        # Gắn lại số trang cho từng vector trước khi index.
+        children = _attach_pages(chunks, embedded)
+
+        # 5) Index parent-child vào OpenSearch (idempotent), child kèm field `page`.
         parent_meta = {
             "document_id": document_id,
             "media_id": media.pk,
             "original_name": media.original_name,
             "mime_type": media.mime_type,
             "file_type": media.file_type,
+            "page_count": len(pages),
         }
-        indexed = OpenSearchIndexer(opensearch_config).index_document(parent_meta, embedded)
+        indexed = OpenSearchIndexer(opensearch_config).index_document(parent_meta, children)
 
         # 6) Phần phụ Phase 2 — fail-safe: lỗi KHÔNG đổi status sang FAILED, chỉ log.
         #    Chạy sau khi rag-index chính đã xong (tài liệu coi như thành công).
