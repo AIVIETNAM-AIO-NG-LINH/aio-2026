@@ -2,8 +2,8 @@
 
 Sau khi rag-index chính xong, bước này nạp text tài liệu vào LightRAG để dựng
 knowledge graph (entity/relation). Storage: PostgreSQL cho KV/Vector/DocStatus,
-Neo4j cho graph. LLM trích entity = Gemini Flash, embedding = text-embedding-004
-768 chiều — tái dùng `gemini_client` của Phase 1.
+Neo4j cho graph. LLM trích entity = Gemini Flash, embedding = gemini-embedding-001
+768 chiều (MRL, L2-normalize) — tái dùng `gemini_client` của Phase 1.
 
 NGUYÊN TẮC:
   * `LIGHTRAG_ENABLED=false` (mặc định) → bỏ qua hoàn toàn, không import lightrag.
@@ -29,9 +29,11 @@ logger = logging.getLogger(__name__)
 # working_dir cục bộ cho LightRAG (cache/khoá nội bộ). PG/Neo4j giữ dữ liệu thật.
 _WORKING_DIR = "/tmp/lightrag/chatbot"
 
-# Embedding text-embedding-004: 768 chiều, ngữ cảnh tối đa ~8192 token.
+# Embedding gemini-embedding-001 @768 chiều (MRL), ngữ cảnh tối đa ~2048 token.
 _EMBEDDING_DIM = 768
-_EMBEDDING_MAX_TOKENS = 8192
+_EMBEDDING_MAX_TOKENS = 2048
+# task_type cho lúc INDEX tài liệu vào KG (đồng bộ với embedder chính).
+_TASK_TYPE_DOCUMENT = "RETRIEVAL_DOCUMENT"
 
 
 def index_lightrag(
@@ -109,19 +111,33 @@ def _build_llm_func(gemini_config: GeminiConfig):
 
 
 def _build_embedding_func(gemini_config: GeminiConfig):
-    """Async embedding func (text-embedding-004, 768 chiều) trả numpy array."""
+    """Async embedding func (gemini-embedding-001 @768 chiều, MRL) trả numpy array.
+
+    gemini-embedding-001 ở <3072 chiều KHÔNG normalize sẵn → tự L2-normalize từng
+    vector (giống embedder chính) để LightRAG/PGVector tính cosine đúng.
+    """
     import numpy as np
+    from google.genai import types
 
     client = build_client(gemini_config)
     model = gemini_config.embedding_model
+    embed_config = types.EmbedContentConfig(
+        output_dimensionality=_EMBEDDING_DIM,
+        task_type=_TASK_TYPE_DOCUMENT,
+    )
 
     async def embedding_func(texts: list[str]):
         response = await client.aio.models.embed_content(
             model=model,
             contents=texts,
+            config=embed_config,
         )
         vectors = [list(emb.values or []) for emb in (response.embeddings or [])]
-        return np.array(vectors, dtype=np.float32)
+        arr = np.array(vectors, dtype=np.float32)
+        # L2-normalize theo hàng; tránh chia 0 cho vector toàn 0.
+        norms = np.linalg.norm(arr, axis=1, keepdims=True)
+        norms[norms == 0.0] = 1.0
+        return arr / norms
 
     return embedding_func
 

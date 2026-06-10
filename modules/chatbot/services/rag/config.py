@@ -77,7 +77,8 @@ class GeminiConfig:
     def from_env(cls) -> "GeminiConfig":
         return cls(
             api_key=_env("GEMINI_API_KEY"),
-            embedding_model=_env("EMBEDDING_MODEL", default="text-embedding-004"),
+            # gemini-embedding-001 ở 768 chiều (MRL); vector phải L2-normalize sau embed.
+            embedding_model=_env("EMBEDDING_MODEL", default="gemini-embedding-001"),
             # Model multimodal đọc PDF → text. Override qua env nếu Google đổi tên.
             extract_model=_env("GEMINI_EXTRACT_MODEL", default="gemini-2.5-flash"),
             # Model Flash sinh tóm tắt (summary index) + trích entity (LightRAG).
