@@ -42,7 +42,6 @@ from .chat.config import ChatConfig
 from .chat.history import load_history_contents
 from .chat.ltm import ChatHistoryIndex
 from .chat.prompt import build_user_message
-from .rag.config import GeminiConfig, OpenSearchConfig
 
 logger = logging.getLogger(__name__)
 
@@ -120,8 +119,6 @@ class ChatService(BaseService):
         có citations rỗng. Tool gọi lần 2+ (hiếm) phát thêm event `citations`.
         """
         chat_config = ChatConfig.from_env()
-        gemini_config = GeminiConfig.from_env()
-        os_config = OpenSearchConfig.from_env()
 
         answer_parts: list[str] = []
         citations: list[dict] = []
@@ -145,9 +142,9 @@ class ChatService(BaseService):
             ltm_context = ""
             if chat_config.ltm_enabled:
                 try:
-                    ltm_context = ChatHistoryIndex(
-                        os_config, gemini_config, chat_config
-                    ).search(conversation.user_id, dto.question)
+                    ltm_context = ChatHistoryIndex(chat_config).search(
+                        conversation.user_id, dto.question
+                    )
                 except Exception:
                     logger.exception("[chat] LTM search lỗi (bỏ qua)")
 

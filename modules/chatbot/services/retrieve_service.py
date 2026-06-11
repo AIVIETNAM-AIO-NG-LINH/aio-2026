@@ -21,17 +21,11 @@ from rest_framework.response import Response
 from modules.base.services import BaseService
 
 from ..requests import RetrieveDTO
-from .rag.config import (
-    GeminiConfig,
-    OpenSearchConfig,
-    QueryRewriteConfig,
-    RerankConfig,
-    RetrieveConfig,
-)
+from .rag.config import QueryRewriteConfig, RerankConfig, RetrieveConfig
 from .rag.embedder import embed_query
 from .rag.query_rewriter import rewrite_query
 from .rag.reranker_client import rerank
-from .rag.retriever import Retriever
+from .opensearch import Retriever
 
 logger = logging.getLogger(__name__)
 
@@ -51,27 +45,26 @@ class RetrieveService(BaseService):
         in-process để lấy ngữ cảnh). `top_k`/`top_n` None → lấy default từ env.
         Mỗi chunk: {chunk_text, score, document_id, media_id, original_name, page}.
         """
-        gemini_config = GeminiConfig.from_env()
-        opensearch_config = OpenSearchConfig.from_env()
         rewrite_config = QueryRewriteConfig.from_env()
         rerank_config = RerankConfig.from_env()
         retrieve_config = RetrieveConfig.from_env()
+        retriever = Retriever()  # tự đọc env OPENSEARCH_* (base client)
 
         top_k = top_k or retrieve_config.top_k
         top_n = top_n or retrieve_config.top_n
         query = (query or "").strip()
 
         # 1) Query rewriting (fail-safe → chỉ query gốc).
-        variants = rewrite_query(query, gemini_config, rewrite_config)
+        variants = rewrite_query(query, rewrite_config)
 
         # 2) Embed từng biến thể (RETRIEVAL_QUERY). Vector None → variant chỉ chạy BM25.
         query_variants = [
-            (text, embed_query(text, opensearch_config.vector_dims, gemini_config))
+            (text, embed_query(text, retriever.vector_dims))
             for text in variants
         ]
 
         # 3) Hybrid search + RRF → top_n ứng viên (kèm metadata parent + page).
-        candidates = Retriever(opensearch_config).retrieve(
+        candidates = retriever.retrieve(
             query_variants, top_n=top_n, rrf_k=retrieve_config.rrf_k
         )
 

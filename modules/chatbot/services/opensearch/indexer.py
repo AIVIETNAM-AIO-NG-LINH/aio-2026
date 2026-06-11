@@ -11,9 +11,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from opensearchpy import OpenSearch, helpers
+from opensearchpy import helpers
 
-from .config import OpenSearchConfig
+from modules.base.clients.opensearch_client import BaseOpenSearchClient
 
 logger = logging.getLogger(__name__)
 
@@ -23,23 +23,8 @@ PARENT_RELATION = "document"
 CHILD_RELATION = "chunk"
 
 
-class OpenSearchIndexer:
+class OpenSearchIndexer(BaseOpenSearchClient):
     """Tạo index (nếu chưa có) và ghi parent-child cho một tài liệu."""
-
-    def __init__(self, config: OpenSearchConfig) -> None:
-        self._config = config
-        self._client = self._build_client(config)
-
-    @staticmethod
-    def _build_client(config: OpenSearchConfig) -> OpenSearch:
-        """Khởi tạo OpenSearch client từ env (URL, auth cơ bản, verify TLS)."""
-        http_auth = (config.user, config.password) if config.user else None
-        return OpenSearch(
-            hosts=[config.url],
-            http_auth=http_auth,
-            verify_certs=config.verify_certs,
-            ssl_show_warn=config.verify_certs,
-        )
 
     # --- Mapping / index ---------------------------------------------------
     def _index_body(self) -> dict[str, Any]:
@@ -69,7 +54,7 @@ class OpenSearchIndexer:
                     "page": {"type": "integer"},
                     "chunk_vector": {
                         "type": "knn_vector",
-                        "dimension": self._config.vector_dims,
+                        "dimension": self.vector_dims,
                         "method": {
                             "name": "hnsw",
                             "engine": "lucene",
@@ -83,7 +68,7 @@ class OpenSearchIndexer:
 
     def ensure_index(self) -> None:
         """Tạo index với mapping nếu chưa tồn tại (no-op nếu đã có)."""
-        index = self._config.index
+        index = self.index
         if self._client.indices.exists(index=index):
             return
         logger.info("[opensearch] tạo index '%s'", index)
@@ -106,7 +91,7 @@ class OpenSearchIndexer:
 
         document_id = parent_meta["document_id"]
         parent_id = str(document_id)
-        index = self._config.index
+        index = self.index
 
         self._delete_existing(parent_id, document_id)
 
@@ -161,7 +146,7 @@ class OpenSearchIndexer:
             }
         }
         self._client.delete_by_query(
-            index=self._config.index,
+            index=self.index,
             body=query,
             routing=parent_id,
             refresh=True,

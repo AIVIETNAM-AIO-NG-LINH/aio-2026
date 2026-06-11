@@ -13,6 +13,14 @@ from django.db import models
 from modules.base.models import SoftDeleteModel
 from modules.media.enums import FileType
 
+# Mime chuẩn của từng loại tài liệu — dùng cho `document_kind` (ưu tiên mime
+# trước vì cột `file_type` do client khai, có thể sai/thiếu).
+_PDF_MIMES = {"application/pdf"}
+_WORD_MIMES = {
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
+
 
 class Media(SoftDeleteModel):
     """Bản ghi file media (read-only ở service này)."""
@@ -41,6 +49,20 @@ class Media(SoftDeleteModel):
 
     def __str__(self) -> str:
         return self.original_name
+
+    @property
+    def document_kind(self) -> str | None:
+        """Loại tài liệu để ingest: "PDF" / "WORD" (value của `FileType`), hoặc
+        `None` nếu không phải tài liệu hỗ trợ. Ưu tiên `mime_type`, fallback
+        `file_type`."""
+        mime = (self.mime_type or "").strip().lower()
+        ftype = (self.file_type or "").strip().upper()
+
+        if mime in _PDF_MIMES or ftype == FileType.PDF:
+            return FileType.PDF.value
+        if mime in _WORD_MIMES or ftype == FileType.WORD:
+            return FileType.WORD.value
+        return None
 
     @property
     def url(self) -> str | None:

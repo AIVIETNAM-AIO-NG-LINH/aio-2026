@@ -1,8 +1,8 @@
 """Request validate cho endpoint nội bộ ingest tài liệu chatbot.
 
 Body chỉ có 1 field `document_id` (id của bản ghi `chatbot_documents` mà api-aio
-vừa tạo). Tầng này CHỈ validate dạng dữ liệu (int > 0); việc kiểm tra bản ghi có
-TỒN TẠI hay không nằm ở `IngestDocumentService` để trả 404 tách bạch khỏi 422.
+vừa tạo). Validate cả dạng dữ liệu (int > 0) lẫn bản ghi có TỒN TẠI hay không
+(chưa xóa mềm) — fail đều trả 422 shape V1; Service chỉ còn enqueue.
 """
 
 from __future__ import annotations
@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from rest_framework import serializers
 
 from modules.base.requests import BaseFormRequest
+
+from ..repositories import ChatbotDocumentRepository
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,12 @@ class IngestDocumentRequest(BaseFormRequest):
             "min_value": "document_id phải lớn hơn 0",
         },
     )
+
+    def validate_document_id(self, value: int) -> int:
+        """Bản ghi phải tồn tại (repository đã lọc xóa mềm)."""
+        if not ChatbotDocumentRepository().exists(value):
+            raise serializers.ValidationError("document_id không tồn tại")
+        return value
 
     def to_dto(self) -> IngestDocumentDTO:
         """`validated_data` → DTO. Gọi SAU `is_valid()`."""

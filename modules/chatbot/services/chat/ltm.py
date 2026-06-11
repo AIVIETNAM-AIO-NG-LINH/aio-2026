@@ -14,38 +14,20 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from opensearchpy import OpenSearch
+from modules.base.clients.opensearch_client import BaseOpenSearchClient
 
-from ..rag.config import GeminiConfig, OpenSearchConfig
 from ..rag.embedder import embed_chunks, embed_query
 from .config import ChatConfig
 
 logger = logging.getLogger(__name__)
 
 
-class ChatHistoryIndex:
+class ChatHistoryIndex(BaseOpenSearchClient):
     """Đọc/ghi index lịch sử hội thoại (vector) cho LTM."""
 
-    def __init__(
-        self,
-        os_config: OpenSearchConfig,
-        gemini_config: GeminiConfig,
-        chat_config: ChatConfig,
-    ) -> None:
-        self._os_config = os_config
-        self._gemini_config = gemini_config
+    def __init__(self, chat_config: ChatConfig) -> None:
+        super().__init__()
         self._chat_config = chat_config
-        self._client = self._build_client(os_config)
-
-    @staticmethod
-    def _build_client(config: OpenSearchConfig) -> OpenSearch:
-        http_auth = (config.user, config.password) if config.user else None
-        return OpenSearch(
-            hosts=[config.url],
-            http_auth=http_auth,
-            verify_certs=config.verify_certs,
-            ssl_show_warn=config.verify_certs,
-        )
 
     # --- Mapping / index ---------------------------------------------------
     def _index_body(self) -> dict[str, Any]:
@@ -58,7 +40,7 @@ class ChatHistoryIndex:
                     "content": {"type": "text"},
                     "content_vector": {
                         "type": "knn_vector",
-                        "dimension": self._os_config.vector_dims,
+                        "dimension": self.vector_dims,
                         "method": {
                             "name": "hnsw",
                             "engine": "lucene",
@@ -95,9 +77,7 @@ class ChatHistoryIndex:
         if not question or not answer:
             return False
 
-        embedded = embed_chunks(
-            [question], self._os_config.vector_dims, self._gemini_config
-        )
+        embedded = embed_chunks([question], self.vector_dims)
         if not embedded:
             logger.warning("[ltm] conv=%s không embed được câu hỏi, bỏ qua", conversation_id)
             return False
@@ -127,7 +107,7 @@ class ChatHistoryIndex:
         if not query:
             return ""
 
-        vector = embed_query(query, self._os_config.vector_dims, self._gemini_config)
+        vector = embed_query(query, self.vector_dims)
         if vector is None:
             return ""
 

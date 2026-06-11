@@ -3,7 +3,7 @@
 Sau khi rag-index chính đã xong, bước này tạo 1 doc/tài liệu trong index riêng
 (`OPENSEARCH_SUMMARY_INDEX`): tóm tắt ≤200 ký tự + vector 768 chiều để truy hồi
 nhanh ở mức tài liệu. Toàn bộ fail-safe — lỗi ở đây KHÔNG làm hỏng rag-index
-chính, pipeline chỉ log rồi bỏ qua (xem `pipeline.py`).
+chính, pipeline chỉ log rồi bỏ qua (xem `pipelines/ingest.py`).
 
 Idempotent theo `document_id`: doc id = str(document_id) nên re-ingest ghi đè.
 """
@@ -13,11 +13,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from opensearchpy import OpenSearch
+from modules.base.clients.gemini_client import GeminiClient
+from modules.base.clients.opensearch_client import BaseOpenSearchClient
 
-from .config import GeminiConfig, OpenSearchConfig
-from .embedder import embed_chunks
-from .gemini_client import build_client
+from ..rag.embedder import embed_chunks
 
 logger = logging.getLogger(__name__)
 
@@ -36,23 +35,8 @@ _SUMMARY_PROMPT = (
 )
 
 
-class SummaryIndexer:
+class SummaryIndexer(BaseOpenSearchClient):
     """Tạo summary index (nếu chưa có) và ghi 1 doc tóm tắt cho mỗi tài liệu."""
-
-    def __init__(self, os_config: OpenSearchConfig, gemini_config: GeminiConfig) -> None:
-        self._os_config = os_config
-        self._gemini_config = gemini_config
-        self._client = self._build_client(os_config)
-
-    @staticmethod
-    def _build_client(config: OpenSearchConfig) -> OpenSearch:
-        http_auth = (config.user, config.password) if config.user else None
-        return OpenSearch(
-            hosts=[config.url],
-            http_auth=http_auth,
-            verify_certs=config.verify_certs,
-            ssl_show_warn=config.verify_certs,
-        )
 
     # --- Mapping / index ---------------------------------------------------
     def _index_body(self) -> dict[str, Any]:
@@ -66,7 +50,7 @@ class SummaryIndexer:
                     "summary_text": {"type": "text"},
                     "summary_vector": {
                         "type": "knn_vector",
-                        "dimension": self._os_config.vector_dims,
+                        "dimension": self.vector_dims,
                         "method": {
                             "name": "hnsw",
                             "engine": "lucene",
@@ -79,7 +63,7 @@ class SummaryIndexer:
         }
 
     def _ensure_index(self) -> None:
-        index = self._os_config.summary_index
+        index = self.summary_index
         if self._client.indices.exists(index=index):
             return
         logger.info("[summary] tạo index '%s'", index)
@@ -88,13 +72,9 @@ class SummaryIndexer:
     # --- Sinh tóm tắt ------------------------------------------------------
     def _summarize(self, text: str) -> str:
         """Gọi Gemini Flash sinh tóm tắt ≤200 ký tự (cắt cứng nếu model trả dài hơn)."""
-        client = build_client(self._gemini_config)
+        client = GeminiClient()
         prompt = _SUMMARY_PROMPT + text[:_SUMMARY_INPUT_MAX_CHARS]
-        response = client.models.generate_content(
-            model=self._gemini_config.summary_model,
-            contents=[prompt],
-        )
-        summary = (response.text or "").strip()
+        summary = client.generate_text([prompt], model=client.summary_model)
         if len(summary) > _SUMMARY_MAX_CHARS:
             summary = summary[:_SUMMARY_MAX_CHARS].rstrip()
         return summary
@@ -117,7 +97,7 @@ class SummaryIndexer:
             return False
 
         # Tái dùng embedder Phase 1 (đảm bảo đúng số chiều); lấy vector đầu tiên.
-        embedded = embed_chunks([summary], self._os_config.vector_dims, self._gemini_config)
+        embedded = embed_chunks([summary], self.vector_dims)
         if not embedded:
             logger.warning(
                 "[summary] document_id=%s không embed được tóm tắt (sai chiều?), bỏ qua",
@@ -128,7 +108,7 @@ class SummaryIndexer:
 
         self._ensure_index()
         self._client.index(
-            index=self._os_config.summary_index,
+            index=self.summary_index,
             id=str(document_id),
             body={
                 "document_id": document_id,

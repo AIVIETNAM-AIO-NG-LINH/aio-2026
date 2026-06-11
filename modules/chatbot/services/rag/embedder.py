@@ -13,10 +13,7 @@ from __future__ import annotations
 import logging
 import math
 
-from google.genai import types
-
-from .config import GeminiConfig
-from .gemini_client import build_client
+from modules.base.clients.gemini_client import GeminiClient
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +39,6 @@ def _l2_normalize(vector: list[float]) -> list[float]:
 def embed_chunks(
     chunks: list[str],
     expected_dims: int,
-    config: GeminiConfig,
 ) -> list[tuple[str, list[float]]]:
     """Embed `chunks`, trả [(text, vector)] với vector đúng `expected_dims`.
 
@@ -52,24 +48,13 @@ def embed_chunks(
     if not chunks:
         return []
 
-    client = build_client(config)
+    client = GeminiClient()
     results: list[tuple[str, list[float]]] = []
-
-    embed_config = types.EmbedContentConfig(
-        output_dimensionality=expected_dims,
-        task_type=_TASK_TYPE_DOCUMENT,
-    )
 
     for start in range(0, len(chunks), _BATCH_SIZE):
         batch = chunks[start : start + _BATCH_SIZE]
-        response = client.models.embed_content(
-            model=config.embedding_model,
-            contents=batch,
-            config=embed_config,
-        )
-        embeddings = response.embeddings or []
-        for text, embedding in zip(batch, embeddings):
-            vector = list(embedding.values or [])
+        vectors = client.embed(batch, expected_dims, _TASK_TYPE_DOCUMENT)
+        for text, vector in zip(batch, vectors):
             if len(vector) != expected_dims:
                 logger.warning(
                     "[embed] bỏ qua chunk sai chiều: got=%d expected=%d",
@@ -87,7 +72,6 @@ def embed_chunks(
 def embed_query(
     query: str,
     expected_dims: int,
-    config: GeminiConfig,
 ) -> list[float] | None:
     """Embed MỘT câu truy vấn cho kNN, trả vector đã L2-normalize hoặc None nếu lỗi.
 
@@ -100,20 +84,11 @@ def embed_query(
     if not text:
         return None
 
-    client = build_client(config)
-    response = client.models.embed_content(
-        model=config.embedding_model,
-        contents=[text],
-        config=types.EmbedContentConfig(
-            output_dimensionality=expected_dims,
-            task_type=_TASK_TYPE_QUERY,
-        ),
-    )
-    embeddings = response.embeddings or []
-    if not embeddings:
+    vectors = GeminiClient().embed([text], expected_dims, _TASK_TYPE_QUERY)
+    if not vectors:
         logger.warning("[embed_query] model không trả embedding")
         return None
-    vector = list(embeddings[0].values or [])
+    vector = vectors[0]
     if len(vector) != expected_dims:
         logger.warning(
             "[embed_query] vector sai chiều: got=%d expected=%d", len(vector), expected_dims

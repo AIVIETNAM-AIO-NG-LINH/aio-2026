@@ -15,36 +15,20 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from opensearchpy import OpenSearch
-
-from .config import OpenSearchConfig
+from modules.base.clients.opensearch_client import BaseOpenSearchClient
 
 logger = logging.getLogger(__name__)
 
 
-class Retriever:
+class Retriever(BaseOpenSearchClient):
     """Chạy hybrid search + RRF và trả ứng viên chunk kèm metadata parent."""
-
-    def __init__(self, config: OpenSearchConfig) -> None:
-        self._config = config
-        self._client = self._build_client(config)
-
-    @staticmethod
-    def _build_client(config: OpenSearchConfig) -> OpenSearch:
-        http_auth = (config.user, config.password) if config.user else None
-        return OpenSearch(
-            hosts=[config.url],
-            http_auth=http_auth,
-            verify_certs=config.verify_certs,
-            ssl_show_warn=config.verify_certs,
-        )
 
     # --- Search helpers ----------------------------------------------------
     def _search_hits(self, body: dict[str, Any], size: int) -> list[dict[str, Any]]:
         """Chạy 1 search, trả list hit thô (rỗng nếu lỗi/không có index)."""
         try:
             response = self._client.search(
-                index=self._config.index,
+                index=self.index,
                 body={"size": size, "_source": ["chunk_text", "page"], **body},
             )
             return response.get("hits", {}).get("hits", [])
@@ -111,7 +95,7 @@ class Retriever:
         if parent_ids:
             try:
                 docs = self._client.mget(
-                    index=self._config.index,
+                    index=self.index,
                     body={
                         "docs": [
                             {

@@ -1,6 +1,7 @@
-"""Pipeline RAG của module Chatbot (Phase 1).
+"""Thành phần RAG dùng chung của module Chatbot (Phase 1).
 
-Gói các bước S3 → extract (Gemini) → chunk → embed → index (OpenSearch). Không
-import sẵn `pipeline` ở đây để tránh kéo Django model vào lúc autodiscover task —
-caller (task) import trực tiếp `modules.chatbot.services.rag.pipeline`.
+Các bước tái sử dụng cho cả ingest lẫn retrieve: extract (Gemini) → chunk →
+embed, query rewrite + rerank, và các config thuần tham số. Phần liên quan hạ
+tầng nằm chỗ khác: class thao tác OpenSearch ở `services/opensearch/`,
+orchestrator ingest ở `modules.chatbot.pipelines.ingest` (chạy trong worker).
 """

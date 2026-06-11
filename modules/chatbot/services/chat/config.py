@@ -1,7 +1,8 @@
 """Cấu hình tầng chat (generation) — đọc từ biến môi trường (12-factor).
 
-Tách riêng khỏi `rag/config.py` (lo ingest/retrieve). Tái dùng `_env*` helper và
-`GeminiConfig`/`OpenSearchConfig` của RAG để khỏi trùng logic parse env.
+Tách riêng khỏi `rag/config.py` (lo ingest/retrieve). Tái dùng `_env*` helper của
+RAG để khỏi trùng logic parse env; Gemini/OpenSearch do client ở
+`modules.base.clients` tự quản config.
 """
 
 from __future__ import annotations

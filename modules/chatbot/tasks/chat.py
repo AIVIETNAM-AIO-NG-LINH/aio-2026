@@ -1,8 +1,7 @@
-"""Celery task của module Chatbot — được `app.autodiscover_tasks()` nạp tự động.
+"""Task phụ trợ sau mỗi lượt chat — chạy nền, fail-safe (lỗi chỉ log).
 
-Phase 1: `ingest_document` chạy pipeline RAG thật — tải file gốc từ S3, trích
-text bằng Gemini, chunk + embed, rồi index parent-child vào OpenSearch. Toàn bộ
-nghiệp vụ nằm ở `services.rag.pipeline`; task chỉ là vỏ Celery mỏng.
+- `generate_conversation_title` — sinh tiêu đề ngắn cho hội thoại đầu tiên.
+- `index_chat_turn`             — lưu lượt hỏi-đáp vào LTM (OpenSearch).
 """
 
 from __future__ import annotations
@@ -14,21 +13,6 @@ from celery import shared_task
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name="chatbot.ingest_document")
-def ingest_document(document_id: int) -> None:
-    """Chạy pipeline RAG cho `document_id` (= chatbot_documents.id).
-
-    Import pipeline bên trong task để tránh nạp Django model/app registry lúc
-    module được autodiscover (task chạy trong worker, lúc đó Django đã sẵn sàng).
-    Pipeline tự đánh status PENDING→READY/FAILED và nuốt lỗi (log) nên task không
-    raise — phù hợp Phase 1 (chưa cấu hình retry).
-    """
-    from .services.rag.pipeline import run_ingest_pipeline
-
-    logger.info("[ingest_document] nhận document_id=%s", document_id)
-    run_ingest_pipeline(document_id)
-
-
 @shared_task(name="chatbot.generate_conversation_title")
 def generate_conversation_title(conversation_id: int, question: str, answer: str) -> None:
     """Sinh tiêu đề ngắn cho hội thoại từ câu hỏi + trả lời đầu tiên (Gemini Flash).
@@ -36,10 +20,9 @@ def generate_conversation_title(conversation_id: int, question: str, answer: str
     Chỉ set khi `title` còn None (idempotent — chạy đua nhiều lượt vẫn an toàn).
     Fail-safe: lỗi LLM/DB chỉ log, không raise (tiêu đề là phụ trợ).
     """
-    from .models import ChatConversation
-    from .services.chat.config import ChatConfig
-    from .services.chat.generator import generate_text
-    from .services.rag.config import GeminiConfig
+    from ..models import ChatConversation
+    from ..services.chat.config import ChatConfig
+    from ..services.chat.generator import generate_text
 
     chat_config = ChatConfig.from_env()
     if not chat_config.title_enabled:
@@ -56,7 +39,7 @@ def generate_conversation_title(conversation_id: int, question: str, answer: str
         f"Người dùng: {question}\nTrợ lý: {answer}"
     )
     try:
-        title = generate_text(prompt, chat_config.title_model, GeminiConfig.from_env())
+        title = generate_text(prompt, chat_config.title_model)
     except Exception:
         logger.exception("[title] lỗi sinh tiêu đề conv=%s (bỏ qua)", conversation_id)
         return
@@ -79,16 +62,15 @@ def index_chat_turn(
 
     Fail-safe: lỗi embed/OpenSearch chỉ log, không raise (LTM là phụ trợ).
     """
-    from .services.chat.config import ChatConfig
-    from .services.chat.ltm import ChatHistoryIndex
-    from .services.rag.config import GeminiConfig, OpenSearchConfig
+    from ..services.chat.config import ChatConfig
+    from ..services.chat.ltm import ChatHistoryIndex
 
     chat_config = ChatConfig.from_env()
     if not chat_config.ltm_enabled:
         return
     try:
-        ChatHistoryIndex(
-            OpenSearchConfig.from_env(), GeminiConfig.from_env(), chat_config
-        ).index_turn(conversation_id, user_id, question, answer)
+        ChatHistoryIndex(chat_config).index_turn(
+            conversation_id, user_id, question, answer
+        )
     except Exception:
         logger.exception("[ltm] lỗi index lượt hội thoại conv=%s (bỏ qua)", conversation_id)

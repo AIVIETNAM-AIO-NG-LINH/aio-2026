@@ -3,8 +3,9 @@
 Pattern chuẩn Django + Celery:
   - Đọc cấu hình từ `django.conf:settings`, chỉ lấy các key prefix `CELERY_`
     (namespace="CELERY") — broker/result backend khai báo ở settings.py.
-  - `autodiscover_tasks()` quét `tasks.py` trong từng app ở INSTALLED_APPS
-    (vd `modules.chatbot.tasks`) nên task mới chỉ cần đặt đúng file là được nạp.
+  - `autodiscover_tasks()` import module `tasks` trong từng app ở INSTALLED_APPS
+    (vd package `modules.chatbot.tasks`) — task mới chỉ cần được re-export ở
+    `tasks/__init__.py` là được nạp.
 
 Khởi động worker:  celery -A config worker --loglevel=info
 """

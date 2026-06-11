@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import logging
 
-from .config import GeminiConfig, QueryRewriteConfig
-from .gemini_client import build_client
+from modules.base.clients.gemini_client import GeminiClient
+
+from .config import QueryRewriteConfig
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,6 @@ def _parse_variants(raw: str) -> list[str]:
 
 def rewrite_query(
     query: str,
-    gemini_config: GeminiConfig,
     rewrite_config: QueryRewriteConfig,
 ) -> list[str]:
     """Trả danh sách truy vấn để search: [query_gốc, ...biến thể] (đã khử trùng lặp).
@@ -63,13 +63,9 @@ def rewrite_query(
     # Số biến thể thêm tối đa = max_variants - 1 (đã trừ query gốc).
     extra = rewrite_config.max_variants - 1
     try:
-        client = build_client(gemini_config)
         prompt = _REWRITE_PROMPT.format(n=extra, query=original)
-        response = client.models.generate_content(
-            model=rewrite_config.model,
-            contents=[prompt],
-        )
-        for variant in _parse_variants(response.text or ""):
+        raw = GeminiClient().generate_text([prompt], model=rewrite_config.model)
+        for variant in _parse_variants(raw):
             if len(variants) >= rewrite_config.max_variants:
                 break
             # Khử trùng lặp không phân biệt hoa thường (giữ bản xuất hiện trước).

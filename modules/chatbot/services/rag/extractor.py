@@ -25,9 +25,9 @@ from dataclasses import dataclass
 from google.genai import types
 from pypdf import PdfReader, PdfWriter
 
-from .config import GeminiConfig
+from modules.base.clients.gemini_client import GeminiClient
+
 from .exceptions import UnsupportedDocumentError
-from .gemini_client import build_client
 
 logger = logging.getLogger(__name__)
 
@@ -47,16 +47,10 @@ class ExtractedPage:
     page: int
     text: str
 
-# Phân loại tài liệu sau khi soi mime_type/file_type.
+# Loại tài liệu hỗ trợ (= value của `media.enums.FileType`) — pipeline lấy từ
+# `Media.document_kind` rồi truyền vào đây.
 KIND_PDF = "PDF"
 KIND_WORD = "WORD"
-KIND_OTHER = "OTHER"
-
-_PDF_MIMES = {"application/pdf"}
-_WORD_MIMES = {
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-}
 
 # Prompt trích text thô — ưu tiên giữ thứ tự đọc, không tự bịa nội dung.
 _EXTRACT_PROMPT = (
@@ -66,23 +60,10 @@ _EXTRACT_PROMPT = (
 )
 
 
-def detect_kind(mime_type: str | None, file_type: str | None) -> str:
-    """Suy ra loại tài liệu (PDF/WORD/OTHER) từ mime_type rồi tới file_type."""
-    mime = (mime_type or "").strip().lower()
-    ftype = (file_type or "").strip().upper()
-
-    if mime in _PDF_MIMES or ftype == KIND_PDF:
-        return KIND_PDF
-    if mime in _WORD_MIMES or ftype == KIND_WORD:
-        return KIND_WORD
-    return KIND_OTHER
-
-
 def extract_pages(
     file_bytes: bytes,
     kind: str,
     mime_type: str | None,
-    config: GeminiConfig,
 ) -> list[ExtractedPage]:
     """Trích text THEO TRANG, trả [ExtractedPage(page, text)] (page từ 1).
 
@@ -91,10 +72,10 @@ def extract_pages(
     khác → không nên tới đây (pipeline đã gate), nhưng vẫn raise cho chắc.
     """
     if kind == KIND_PDF:
-        return _extract_pdf_pages(file_bytes, config)
+        return _extract_pdf_pages(file_bytes)
     if kind == KIND_WORD:
         pdf_bytes = _word_to_pdf(file_bytes, mime_type)
-        return _extract_pdf_pages(pdf_bytes, config)
+        return _extract_pdf_pages(pdf_bytes)
     raise UnsupportedDocumentError(f"Loại tài liệu không hỗ trợ: kind={kind!r}")
 
 
@@ -107,13 +88,12 @@ def extract_text(
     file_bytes: bytes,
     kind: str,
     mime_type: str | None,
-    config: GeminiConfig,
 ) -> str:
     """Trích full-text (tương thích cũ) = ghép text của tất cả các trang.
 
     Giữ lại cho các bước chỉ cần text đầy đủ, không cần số trang (summary, KG).
     """
-    return pages_to_text(extract_pages(file_bytes, kind, mime_type, config))
+    return pages_to_text(extract_pages(file_bytes, kind, mime_type))
 
 
 def _word_suffix(mime_type: str | None) -> str:
@@ -182,7 +162,7 @@ def _word_to_pdf(file_bytes: bytes, mime_type: str | None) -> bytes:
     return pdf_bytes
 
 
-def _extract_pdf_pages(file_bytes: bytes, config: GeminiConfig) -> list[ExtractedPage]:
+def _extract_pdf_pages(file_bytes: bytes) -> list[ExtractedPage]:
     """Duyệt từng trang PDF: text-số trực tiếp; rỗng/quá ngắn → OCR Gemini riêng trang.
 
     Lỗi mở PDF (file hỏng/không phải PDF) → `UnsupportedDocumentError` để pipeline
@@ -206,7 +186,7 @@ def _extract_pdf_pages(file_bytes: bytes, config: GeminiConfig) -> list[Extracte
 
         if len(text) < _MIN_PAGE_TEXT_CHARS:
             # Trang scan/ảnh (ít hoặc không có text-số) → OCR riêng trang qua Gemini.
-            text = _ocr_pdf_page(reader, index, config).strip()
+            text = _ocr_pdf_page(reader, index).strip()
             ocr_count += 1
 
         pages.append(ExtractedPage(page=page_number, text=text))
@@ -220,29 +200,24 @@ def _extract_pdf_pages(file_bytes: bytes, config: GeminiConfig) -> list[Extracte
     return pages
 
 
-def _ocr_pdf_page(reader: PdfReader, page_index: int, config: GeminiConfig) -> str:
+def _ocr_pdf_page(reader: PdfReader, page_index: int) -> str:
     """Tách 1 trang thành PDF 1-trang (pypdf PdfWriter) rồi đưa bytes cho Gemini OCR."""
     writer = PdfWriter()
     writer.add_page(reader.pages[page_index])
     buffer = io.BytesIO()
     writer.write(buffer)
-    return _extract_pdf(buffer.getvalue(), "application/pdf", config)
+    return _extract_pdf(buffer.getvalue(), "application/pdf")
 
 
 def _extract_pdf(
     file_bytes: bytes,
     mime_type: str | None,
-    config: GeminiConfig,
 ) -> str:
     """Gửi bytes PDF cho Gemini, trả về text thô (có thể rỗng nếu model không đọc được)."""
-    client = build_client(config)
+    client = GeminiClient()
     part = types.Part.from_bytes(
         data=file_bytes,
         mime_type=mime_type or "application/pdf",
     )
-    logger.info("[extract] Gemini model=%s, %d bytes PDF", config.extract_model, len(file_bytes))
-    response = client.models.generate_content(
-        model=config.extract_model,
-        contents=[part, _EXTRACT_PROMPT],
-    )
-    return (response.text or "").strip()
+    logger.info("[extract] Gemini model=%s, %d bytes PDF", client.extract_model, len(file_bytes))
+    return client.generate_text([part, _EXTRACT_PROMPT], model=client.extract_model)

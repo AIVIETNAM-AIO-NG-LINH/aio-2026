@@ -3,7 +3,7 @@
 Sau khi rag-index chính xong, bước này nạp text tài liệu vào LightRAG để dựng
 knowledge graph (entity/relation). Storage: PostgreSQL cho KV/Vector/DocStatus,
 Neo4j cho graph. LLM trích entity = Gemini Flash, embedding = gemini-embedding-001
-768 chiều (MRL, L2-normalize) — tái dùng `gemini_client` của Phase 1.
+768 chiều (MRL, L2-normalize) — dùng `GeminiClient` của base (bản async).
 
 NGUYÊN TẮC:
   * `LIGHTRAG_ENABLED=false` (mặc định) → bỏ qua hoàn toàn, không import lightrag.
@@ -21,8 +21,9 @@ import asyncio
 import logging
 import os
 
-from .config import GeminiConfig, LightRagConfig
-from .gemini_client import build_client
+from modules.base.clients.gemini_client import GeminiClient
+
+from .config import LightRagConfig
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,6 @@ def index_lightrag(
     document_id: int,
     text: str,
     lightrag_config: LightRagConfig,
-    gemini_config: GeminiConfig,
 ) -> bool:
     """Re-index 1 tài liệu vào LightRAG (sync wrapper, fail-safe).
 
@@ -55,9 +55,7 @@ def index_lightrag(
         return False
 
     try:
-        return asyncio.run(
-            _aindex_document(document_id, text, lightrag_config, gemini_config)
-        )
+        return asyncio.run(_aindex_document(document_id, text, lightrag_config))
     except Exception:
         logger.exception("[lightrag] document_id=%s lỗi index KG (bỏ qua)", document_id)
         return False
@@ -79,10 +77,8 @@ def _export_storage_env(config: LightRagConfig) -> None:
     os.environ["NEO4J_PASSWORD"] = config.neo4j_password
 
 
-def _build_llm_func(gemini_config: GeminiConfig):
+def _build_llm_func(client: GeminiClient):
     """Async LLM func cho LightRAG: trích entity bằng Gemini Flash."""
-    client = build_client(gemini_config)
-    model = gemini_config.summary_model
 
     async def llm_model_func(
         prompt: str,
@@ -101,38 +97,23 @@ def _build_llm_func(gemini_config: GeminiConfig):
             if content:
                 parts.append(content)
         parts.append(prompt)
-        response = await client.aio.models.generate_content(
-            model=model,
-            contents=["\n\n".join(parts)],
+        return await client.agenerate_text(
+            ["\n\n".join(parts)], model=client.summary_model
         )
-        return (response.text or "").strip()
 
     return llm_model_func
 
 
-def _build_embedding_func(gemini_config: GeminiConfig):
+def _build_embedding_func(client: GeminiClient):
     """Async embedding func (gemini-embedding-001 @768 chiều, MRL) trả numpy array.
 
     gemini-embedding-001 ở <3072 chiều KHÔNG normalize sẵn → tự L2-normalize từng
     vector (giống embedder chính) để LightRAG/PGVector tính cosine đúng.
     """
     import numpy as np
-    from google.genai import types
-
-    client = build_client(gemini_config)
-    model = gemini_config.embedding_model
-    embed_config = types.EmbedContentConfig(
-        output_dimensionality=_EMBEDDING_DIM,
-        task_type=_TASK_TYPE_DOCUMENT,
-    )
 
     async def embedding_func(texts: list[str]):
-        response = await client.aio.models.embed_content(
-            model=model,
-            contents=texts,
-            config=embed_config,
-        )
-        vectors = [list(emb.values or []) for emb in (response.embeddings or [])]
+        vectors = await client.aembed(texts, _EMBEDDING_DIM, _TASK_TYPE_DOCUMENT)
         arr = np.array(vectors, dtype=np.float32)
         # L2-normalize theo hàng; tránh chia 0 cho vector toàn 0.
         norms = np.linalg.norm(arr, axis=1, keepdims=True)
@@ -146,7 +127,6 @@ async def _aindex_document(
     document_id: int,
     text: str,
     lightrag_config: LightRagConfig,
-    gemini_config: GeminiConfig,
 ) -> bool:
     """Khởi tạo LightRAG (PG + Neo4j) và re-index 1 tài liệu (delete → insert)."""
     from lightrag import LightRAG
@@ -156,13 +136,14 @@ async def _aindex_document(
     _export_storage_env(lightrag_config)
     os.makedirs(_WORKING_DIR, exist_ok=True)
 
+    gemini = GeminiClient()
     rag = LightRAG(
         working_dir=_WORKING_DIR,
-        llm_model_func=_build_llm_func(gemini_config),
+        llm_model_func=_build_llm_func(gemini),
         embedding_func=EmbeddingFunc(
             embedding_dim=_EMBEDDING_DIM,
             max_token_size=_EMBEDDING_MAX_TOKENS,
-            func=_build_embedding_func(gemini_config),
+            func=_build_embedding_func(gemini),
         ),
         kv_storage="PGKVStorage",
         vector_storage="PGVectorStorage",
