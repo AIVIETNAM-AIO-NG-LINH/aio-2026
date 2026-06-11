@@ -67,12 +67,8 @@ class OpenSearchIndexer(BaseOpenSearchClient):
         }
 
     def ensure_index(self) -> None:
-        """Tạo index với mapping nếu chưa tồn tại (no-op nếu đã có)."""
-        index = self.index
-        if self._client.indices.exists(index=index):
-            return
-        logger.info("[opensearch] tạo index '%s'", index)
-        self._client.indices.create(index=index, body=self._index_body())
+        """Tạo index với mapping nếu chưa tồn tại (no-op nếu đã có, an toàn khi đua)."""
+        self._create_index_if_missing(self.index, self._index_body())
 
     # --- Ghi document ------------------------------------------------------
     def index_document(

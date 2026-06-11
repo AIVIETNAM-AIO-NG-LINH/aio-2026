@@ -63,11 +63,7 @@ class SummaryIndexer(BaseOpenSearchClient):
         }
 
     def _ensure_index(self) -> None:
-        index = self.summary_index
-        if self._client.indices.exists(index=index):
-            return
-        logger.info("[summary] tạo index '%s'", index)
-        self._client.indices.create(index=index, body=self._index_body())
+        self._create_index_if_missing(self.summary_index, self._index_body())
 
     # --- Sinh tóm tắt ------------------------------------------------------
     def _summarize(self, text: str) -> str:

@@ -17,11 +17,14 @@ KHÔNG tự parse env hay dựng connection nữa.
 
 from __future__ import annotations
 
+import logging
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from opensearchpy import OpenSearch
+
+logger = logging.getLogger(__name__)
 
 
 def _env(name: str, default: str = "") -> str:
@@ -66,3 +69,68 @@ class BaseOpenSearchClient:
             verify_certs=self._verify_certs,
             ssl_show_warn=self._verify_certs,
         )
+
+    def _create_index_if_missing(self, index: str, body: dict[str, Any]) -> None:
+        """Tạo index với mapping nếu chưa tồn tại (đã có → chỉ so lại vector dims).
+
+        Check-rồi-tạo không atomic: 2 worker cùng tạo lần đầu thì worker thua
+        cuộc ăn `resource_already_exists` — nuốt lỗi đó (index đã có đúng là
+        điều cần), mọi lỗi khác vẫn raise để caller xử lý trung thực.
+        """
+        from opensearchpy.exceptions import RequestError  # lazy như _build_client
+
+        if self._client.indices.exists(index=index):
+            self._verify_vector_dims(index, body)
+            return
+        logger.info("[opensearch] tạo index '%s'", index)
+        try:
+            self._client.indices.create(index=index, body=body)
+        except RequestError as exc:
+            if exc.error != "resource_already_exists_exception":
+                raise
+            logger.info("[opensearch] index '%s' đã được worker khác tạo", index)
+
+    @staticmethod
+    def _knn_dims(mappings: dict[str, Any]) -> dict[str, int]:
+        """Lấy {tên field: dimension} của mọi field `knn_vector` trong `mappings`."""
+        properties = (mappings or {}).get("properties") or {}
+        return {
+            name: int(prop["dimension"])
+            for name, prop in properties.items()
+            if isinstance(prop, dict)
+            and prop.get("type") == "knn_vector"
+            and "dimension" in prop
+        }
+
+    def _verify_vector_dims(self, index: str, body: dict[str, Any]) -> None:
+        """So `dimension` các field knn_vector của index HIỆN CÓ với mapping code mong đợi.
+
+        OpenSearch không cho đổi dimension tại chỗ: đổi env OPENSEARCH_VECTOR_DIMS
+        sau khi index đã tạo sẽ làm vector mới sai chiều — fail rối ở bulk lúc
+        ingest, còn kNN lúc retrieve thì trả rỗng âm thầm. Phát hiện lệch → raise
+        NGAY với thông điệp rõ thay vì để nổ xa nơi gây lỗi. Riêng lỗi ĐỌC mapping
+        (mạng/transient) chỉ log warning rồi bỏ qua — check này không được phép tự
+        trở thành lý do làm hỏng ingest.
+        """
+        expected: dict[str, int] = self._knn_dims(body.get("mappings") or {})
+        if not expected:
+            return
+        try:
+            # get_mapping trả {tên index thật: {"mappings": {...}}} (opensearchpy không type).
+            response: dict[str, dict[str, Any]] = self._client.indices.get_mapping(index=index)
+            existing: dict[str, int] = self._knn_dims(next(iter(response.values()))["mappings"])
+        except Exception:
+            logger.warning(
+                "[opensearch] không đọc được mapping của '%s' để so vector dims, bỏ qua check",
+                index,
+            )
+            return
+        for field, dims in expected.items():
+            current = existing.get(field)
+            if current is not None and current != dims:
+                raise RuntimeError(
+                    f"Index '{index}' có field '{field}' đang {current} chiều nhưng cấu hình "
+                    f"hiện tại yêu cầu {dims} (env OPENSEARCH_VECTOR_DIMS). OpenSearch không "
+                    f"đổi dimension tại chỗ được — hoặc trả env về {current}, hoặc xoá/reindex "
+                    f"'{index}' rồi re-ingest toàn bộ tài liệu."
+                )
