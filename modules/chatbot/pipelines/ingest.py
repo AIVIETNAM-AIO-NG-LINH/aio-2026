@@ -2,10 +2,11 @@
 
 Đây là phần thân thật của task `chatbot.ingest_document` (Phase 1) — chạy trong
 worker nền nên nằm ở `pipelines/`, không phải `services/` (vốn dành cho class
-nhận request). Các bước con (chunker/embedder/indexer…) vẫn ở `services/rag/`
-vì dùng chung với luồng retrieve. Đọc tài liệu
-từ DB dùng chung (managed=False, chỉ ghi DATA cột `status`), tải file gốc từ S3,
-trích text bằng Gemini, chunk + embed, rồi index parent-child vào OpenSearch.
+nhận request). Các bước riêng của ingest (extractor, page_chunker, config) nằm
+cùng package này; bước dùng chung với retrieve (embedder, indexer…) vẫn ở
+`services/`. Đọc tài liệu từ DB dùng chung (managed=False, chỉ ghi DATA cột
+`status`), tải file gốc từ S3, trích text bằng Gemini, chunk + embed, rồi index
+parent-child vào OpenSearch.
 
 Mọi lỗi đều đánh document FAILED và `logger.exception` — không để task chết âm
 thầm, đồng thời không raise lại để tránh worker retry vô hạn ở Phase 1.
@@ -17,17 +18,13 @@ import logging
 
 from modules.base.clients.s3_client import S3Client
 
-from ..services.rag.chunker import PageChunk, chunk_pages
-from ..services.rag.config import (
-    ChunkConfig,
-    ContextualHeaderConfig,
-    LightRagConfig,
-)
+from ..services.rag.config import LightRagConfig
 from ..services.rag.embedder import embed_chunks
 from ..services.rag.exceptions import UnsupportedDocumentError
-from ..services.rag.extractor import extract_pages, pages_to_text
 from ..services.rag.lightrag_client import index_lightrag
 from ..services.opensearch import OpenSearchIndexer, SummaryIndexer
+from .extractor import extract_pages, pages_to_text
+from .page_chunker import PageChunk, chunk_pages
 
 logger = logging.getLogger(__name__)
 
@@ -115,9 +112,8 @@ def run_ingest_pipeline(document_id: int) -> None:
             _set_status(document_id, DocumentStatus.FAILED)
             return
 
-        # Cấu hình từ env (tách theo nhóm). S3/Gemini/OpenSearch do client ở base tự quản.
-        chunk_config = ChunkConfig.from_env()
-        header_config = ContextualHeaderConfig.from_env()
+        # S3/Gemini/OpenSearch do client ở base tự quản; config chunk + header
+        # do page_chunker tự đọc từ env.
         indexer = OpenSearchIndexer()
 
         # 1) Tải file gốc từ S3 (S3Client ở base tự đọc env AWS_S3_*).
@@ -134,9 +130,7 @@ def run_ingest_pipeline(document_id: int) -> None:
         # 3) Chunk THEO TRANG (mỗi chunk mang số trang + contextual header) +
         #    4) embed text từng chunk. Header (kèm `kind`) đã nằm trong chunk.text
         #    nên vừa vào vector lúc embed, vừa lưu nguyên trong chunk_text ở index.
-        chunks = chunk_pages(
-            pages, media.original_name, chunk_config, kind=kind, header_config=header_config
-        )
+        chunks = chunk_pages(pages, media.original_name, kind=kind)
         embedded = embed_chunks(
             [chunk.text for chunk in chunks], indexer.vector_dims
         )

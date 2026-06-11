@@ -37,48 +37,6 @@ def _env_int(name: str, default: int) -> int:
 
 
 @dataclass(frozen=True)
-class ChunkConfig:
-    """Tham số tách văn bản thành chunk."""
-
-    chunk_size: int
-    chunk_overlap: int
-
-    @classmethod
-    def from_env(cls) -> "ChunkConfig":
-        return cls(
-            chunk_size=_env_int("CHUNK_SIZE", default=800),
-            chunk_overlap=_env_int("CHUNK_OVERLAP", default=120),
-        )
-
-
-@dataclass(frozen=True)
-class ContextualHeaderConfig:
-    """Header ngữ cảnh "light" gắn vào đầu MỖI chunk trước khi embed.
-
-    Bản nhẹ theo khuyến nghị nghiên cứu: KHÔNG gọi LLM cho từng chunk, chỉ ghép
-    metadata sẵn có (tên tài liệu, số trang, loại file) thành 1 dòng prefix để
-    chunk tự đủ ngữ cảnh → tăng recall. `template` dùng placeholder `{name}`,
-    `{page}`, `{kind}` (str.format). Tắt → quay về prefix cũ "File: {name}".
-    """
-
-    enabled: bool
-    template: str
-
-    # Prefix cũ (Phase 1-4) dùng khi tắt contextual header — giữ tương thích.
-    legacy_prefix: str = "File: {name}"
-
-    @classmethod
-    def from_env(cls) -> "ContextualHeaderConfig":
-        return cls(
-            enabled=_env_bool("CONTEXTUAL_HEADER_ENABLED", default=True),
-            template=_env(
-                "CONTEXTUAL_HEADER_FORMAT",
-                default="Tài liệu: {name} | Trang: {page} | Loại: {kind}",
-            ),
-        )
-
-
-@dataclass(frozen=True)
 class QueryRewriteConfig:
     """Viết lại / mở rộng truy vấn trước khi search (Gemini Flash, song ngữ Việt↔Anh).
 
