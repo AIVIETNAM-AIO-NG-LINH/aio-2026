@@ -56,4 +56,8 @@ EXPOSE 8000
 
 # Invoke via `sh` so it works even when a bind mount overrides the exec bit.
 ENTRYPOINT ["sh", "/app/entrypoint.sh"]
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+# gthread (không phải sync): endpoint chat trả SSE giữ kết nối lâu — worker sync sẽ
+# bị 1 stream chiếm trọn, chặn request khác. gthread cho mỗi worker phục vụ nhiều
+# stream đồng thời. --timeout 0: không kill request đang stream dài.
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", \
+     "--workers", "3", "--worker-class", "gthread", "--threads", "8", "--timeout", "0"]

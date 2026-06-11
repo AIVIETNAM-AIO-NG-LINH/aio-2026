@@ -39,17 +39,27 @@ logger = logging.getLogger(__name__)
 class RetrieveService(BaseService):
     """Điều phối rewrite → embed → hybrid → rerank, trả top_k chunk (không sinh LLM)."""
 
-    def retrieve(self, dto: RetrieveDTO) -> Response:
+    def retrieve_chunks(
+        self,
+        query: str,
+        top_k: int | None = None,
+        top_n: int | None = None,
+    ) -> list[dict]:
+        """Truy hồi thuần (rewrite → embed → hybrid → rerank), trả LIST chunk.
+
+        Dùng chung cho endpoint `/retrieve` (bọc Response) và luồng chat (gọi
+        in-process để lấy ngữ cảnh). `top_k`/`top_n` None → lấy default từ env.
+        Mỗi chunk: {chunk_text, score, document_id, media_id, original_name, page}.
+        """
         gemini_config = GeminiConfig.from_env()
         opensearch_config = OpenSearchConfig.from_env()
         rewrite_config = QueryRewriteConfig.from_env()
         rerank_config = RerankConfig.from_env()
         retrieve_config = RetrieveConfig.from_env()
 
-        # Override default env bằng giá trị request nếu có.
-        top_k = dto.top_k or retrieve_config.top_k
-        top_n = dto.top_n or retrieve_config.top_n
-        query = dto.query.strip()
+        top_k = top_k or retrieve_config.top_k
+        top_n = top_n or retrieve_config.top_n
+        query = (query or "").strip()
 
         # 1) Query rewriting (fail-safe → chỉ query gốc).
         variants = rewrite_query(query, gemini_config, rewrite_config)
@@ -88,6 +98,11 @@ class RetrieveService(BaseService):
             len(candidates),
             len(items),
         )
+        return items
+
+    def retrieve(self, dto: RetrieveDTO) -> Response:
+        query = dto.query.strip()
+        items = self.retrieve_chunks(query, top_k=dto.top_k, top_n=dto.top_n)
         return self.response_success(
             {"query": query, "count": len(items), "results": items},
             status=http_status.HTTP_200_OK,

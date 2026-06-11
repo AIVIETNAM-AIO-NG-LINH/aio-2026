@@ -25,6 +25,8 @@ redis>=5.0,<6
 boto3>=1.34,<2
 # Trích text + sinh embedding bằng Google GenAI (Gemini).
 google-genai>=1.0,<2
+# Agent Development Kit — chạy luồng chat (Agent + tool RAG + Runner streaming SSE).
+google-adk>=1.0,<2
 # Tách văn bản thành chunk (RecursiveCharacterTextSplitter).
 langchain-text-splitters>=0.2,<0.4
 # Index vector parent-child vào OpenSearch (kNN/HNSW).
