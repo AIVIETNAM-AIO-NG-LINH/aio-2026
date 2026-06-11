@@ -6,7 +6,7 @@ URL api-aio gọi sang).
 """
 from django.urls import path
 
-from .views import IngestDocumentView, RetrieveView
+from ..views import IngestDocumentView, RetrieveView
 
 urlpatterns = [
     path("documents/ingest", IngestDocumentView.as_view(), name="chatbot-document-ingest"),

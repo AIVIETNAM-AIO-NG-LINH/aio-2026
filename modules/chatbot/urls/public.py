@@ -5,14 +5,14 @@ Nối vào config/urls.py dưới prefix `api/chatbot/`, nên path đầy đủ:
   - GET  `/api/chatbot/conversations`                        — list hội thoại.
   - GET  `/api/chatbot/conversations/<id>/messages`          — list tin nhắn.
 
-KHÁC `urls.py` (nội bộ, prefix `/api/internal/chatbot/`): nhóm này nginx verify
+KHÁC `internal.py` (nội bộ, prefix `/api/internal/chatbot/`): nhóm này nginx verify
 token user (qua api-aio) rồi forward `X-Auth-User-Id`; KHÔNG đi qua
 `VerifyInternalToken`.
 """
 
 from django.urls import path
 
-from .views import ChatView, ConversationListView, MessageListView
+from ..views import ChatView, ConversationListView, MessageListView
 
 urlpatterns = [
     path("chat", ChatView.as_view(), name="chatbot-chat"),
