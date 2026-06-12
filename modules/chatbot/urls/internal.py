@@ -6,10 +6,8 @@ URL api-aio gọi sang).
 """
 from django.urls import path
 
-from ..views import IngestDocumentView, RetrieveView
+from ..views import IngestDocumentView
 
 urlpatterns = [
     path("documents/ingest", IngestDocumentView.as_view(), name="chatbot-document-ingest"),
-    # POST /api/internal/chatbot/retrieve — truy hồi chunk (hybrid + rerank), không sinh LLM.
-    path("retrieve", RetrieveView.as_view(), name="chatbot-retrieve"),
 ]
