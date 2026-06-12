@@ -13,7 +13,9 @@ from rest_framework import status as http_status
 from rest_framework.response import Response
 
 from modules.base.services import BaseService
+from modules.base.supports import translate
 
+from ..catalogs import ExampleCatalog
 from ..models import Example
 from ..requests import ExampleDTO
 from ..serializers import ExampleSerializer
@@ -38,7 +40,8 @@ class ExampleService(BaseService):
         """Cập nhật theo id; không thấy → 404 Not Found."""
         example = Example.objects.filter(pk=example_id).first()
         if example is None:
-            self.not_found("Example không tồn tại")  # NoReturn — dừng tại đây.
+            # NoReturn — dừng tại đây.
+            self.not_found(translate("Example không tồn tại", ExampleCatalog.NOT_FOUND))
         example.name = dto.name
         example.description = dto.description
         example.is_active = dto.is_active
@@ -50,6 +53,6 @@ class ExampleService(BaseService):
         """Xoá theo id; không thấy → 404 Not Found."""
         example = Example.objects.filter(pk=example_id).first()
         if example is None:
-            self.not_found("Example không tồn tại")
+            self.not_found(translate("Example không tồn tại", ExampleCatalog.NOT_FOUND))
         example.delete()
         return self.response_success({"id": int(example_id)})

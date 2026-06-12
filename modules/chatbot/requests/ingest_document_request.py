@@ -12,7 +12,9 @@ from dataclasses import dataclass
 from rest_framework import serializers
 
 from modules.base.requests import BaseFormRequest
+from modules.base.supports import translate, translate_lazy
 
+from ..catalogs import ChatbotCatalog
 from ..repositories import ChatbotDocumentRepository
 
 
@@ -26,19 +28,29 @@ class IngestDocumentDTO:
 class IngestDocumentRequest(BaseFormRequest):
     """Validate payload `{ "document_id": <int> }`."""
 
+    # error_messages bọc `translate_lazy` (KHÔNG phải translate): class-attribute
+    # evaluate lúc import, lazy mới resolve ngôn ngữ per-request lúc render lỗi.
     document_id = serializers.IntegerField(
         min_value=1,
         error_messages={
-            "required": "document_id là bắt buộc",
-            "invalid": "document_id phải là số nguyên",
-            "min_value": "document_id phải lớn hơn 0",
+            "required": translate_lazy(
+                "document_id là bắt buộc", ChatbotCatalog.DOCUMENT_ID_REQUIRED
+            ),
+            "invalid": translate_lazy(
+                "document_id phải là số nguyên", ChatbotCatalog.DOCUMENT_ID_INVALID
+            ),
+            "min_value": translate_lazy(
+                "document_id phải lớn hơn 0", ChatbotCatalog.DOCUMENT_ID_MIN
+            ),
         },
     )
 
     def validate_document_id(self, value: int) -> int:
         """Bản ghi phải tồn tại (repository đã lọc xóa mềm)."""
         if not ChatbotDocumentRepository().exists(value):
-            raise serializers.ValidationError("document_id không tồn tại")
+            raise serializers.ValidationError(
+                translate("document_id không tồn tại", ChatbotCatalog.DOCUMENT_NOT_FOUND)
+            )
         return value
 
     def to_dto(self) -> IngestDocumentDTO:

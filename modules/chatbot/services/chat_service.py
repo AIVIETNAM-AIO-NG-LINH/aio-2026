@@ -30,8 +30,10 @@ from rest_framework import status as http_status
 from rest_framework.response import Response
 
 from modules.base.services import BaseService
+from modules.base.supports import translate
 from modules.base.transformers import TransformerService
 
+from ..catalogs import ChatbotCatalog
 from ..models import ChatConversation, ChatMessage
 from ..repositories import ChatConversationRepository, ChatMessageRepository
 from ..requests import ChatDTO
@@ -73,7 +75,10 @@ class ChatService(BaseService):
         # Chặn gửi tiếp khi lượt trước của hội thoại còn đang xử lý (tránh đua).
         if self.messages.has_processing(conversation.id):
             self.exception(
-                "Hội thoại đang xử lý một câu hỏi khác, vui lòng đợi.",
+                translate(
+                    "Hội thoại đang xử lý một câu hỏi khác, vui lòng đợi.",
+                    ChatbotCatalog.CONVERSATION_PROCESSING,
+                ),
                 http_status.HTTP_409_CONFLICT,
             )
 
@@ -89,7 +94,11 @@ class ChatService(BaseService):
             )
             if conversation is None:
                 # 404: "không tồn tại / không thuộc bạn" (không lộ resource của user khác).
-                self.not_found("Hội thoại không tồn tại")
+                self.not_found(
+                    translate(
+                        "Hội thoại không tồn tại", ChatbotCatalog.CONVERSATION_NOT_FOUND
+                    )
+                )
             return conversation
 
         return self.conversations.create_open(dto.user_id)
@@ -186,7 +195,11 @@ class ChatService(BaseService):
             logger.exception("[chat] lỗi khi sinh câu trả lời (conv=%s)", conversation.id)
             self.messages.mark_error(assistant_message, "".join(answer_parts))
             yield error_event(
-                "Có lỗi khi tạo câu trả lời. Vui lòng thử lại.", assistant_message.id
+                translate(
+                    "Có lỗi khi tạo câu trả lời. Vui lòng thử lại.",
+                    ChatbotCatalog.ANSWER_GENERATION_FAILED,
+                ),
+                assistant_message.id,
             )
         finally:
             # InMemorySessionService giữ session mãi → PHẢI xoá sau mỗi lượt (tránh rò bộ nhớ).
@@ -255,7 +268,9 @@ class ChatService(BaseService):
         """
         conversation = self.conversations.find_owned(conversation_id, user_id)
         if conversation is None:
-            self.not_found("Hội thoại không tồn tại")
+            self.not_found(
+                translate("Hội thoại không tồn tại", ChatbotCatalog.CONVERSATION_NOT_FOUND)
+            )
 
         total, messages = self.messages.paginate_for_conversation(
             conversation.id, page, limit

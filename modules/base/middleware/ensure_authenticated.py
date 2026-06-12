@@ -24,7 +24,9 @@ from django.http import HttpRequest, JsonResponse
 from django.utils.decorators import decorator_from_middleware
 from django.utils.deprecation import MiddlewareMixin
 
+from modules.base.catalogs import CommonCatalog
 from modules.base.singletons import CurrentUser
+from modules.base.supports import translate
 
 
 class EnsureAuthenticated(MiddlewareMixin):
@@ -37,7 +39,10 @@ class EnsureAuthenticated(MiddlewareMixin):
             user_id = 0
 
         if user_id <= 0:
-            return JsonResponse({"message": "Unauthenticated"}, status=401)
+            return JsonResponse(
+                {"message": translate("Unauthenticated", CommonCatalog.UNAUTHENTICATED)},
+                status=401,
+            )
 
         CurrentUser().set(user_id)
         return None

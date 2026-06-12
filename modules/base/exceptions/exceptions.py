@@ -15,7 +15,9 @@ from typing import Any
 from rest_framework import status as http_status
 from rest_framework.exceptions import APIException
 
+from ..catalogs import CommonCatalog
 from ..constants import RES_FAILED
+from ..supports import translate
 
 
 class ApiException(APIException):
@@ -59,7 +61,11 @@ class RequestValidationException(APIException):
 
     status_code = http_status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def __init__(self, fields: dict[str, str], message: str = "Invalid data transmission"):
+    def __init__(self, fields: dict[str, str], message: str | None = None):
+        # Default dịch LÚC RAISE (per-request) — không đặt ở default param vì
+        # default param evaluate lúc import, sai ngôn ngữ khi có bản dịch thật.
+        if message is None:
+            message = translate("Invalid data transmission", CommonCatalog.INVALID_DATA)
         self.fields = fields
         self.message = message
         super().__init__(detail=message)

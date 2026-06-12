@@ -15,6 +15,9 @@ from django.conf import settings
 from django.http import HttpRequest, JsonResponse
 from django.utils.crypto import constant_time_compare
 
+from modules.base.catalogs import CommonCatalog
+from modules.base.supports import translate
+
 INTERNAL_PATH_PREFIX = "/api/internal/"
 
 
@@ -30,6 +33,9 @@ class VerifyInternalToken:
             provided = request.headers.get("X-Internal-Token", "")
 
             if not (expected and constant_time_compare(expected, provided)):
-                return JsonResponse({"message": "Forbidden"}, status=403)
+                return JsonResponse(
+                    {"message": translate("Forbidden", CommonCatalog.FORBIDDEN)},
+                    status=403,
+                )
 
         return self.get_response(request)

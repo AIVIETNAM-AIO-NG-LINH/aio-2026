@@ -21,7 +21,9 @@ from dataclasses import dataclass
 
 from rest_framework import serializers
 
+from modules.base.catalogs import CommonCatalog
 from modules.base.requests import BaseFormRequest
+from modules.base.supports import translate, translate_lazy
 
 from ..models import Example
 
@@ -42,12 +44,16 @@ class ExampleRequest(BaseFormRequest):
     chỉ cần khai báo field + luật như bên Laravel `rules()`.
     """
 
+    # error_messages bọc `translate_lazy` (KHÔNG phải translate): class-attribute
+    # evaluate lúc import, lazy mới resolve ngôn ngữ per-request lúc render lỗi.
     name = serializers.CharField(
         max_length=255,
         error_messages={
-            "required": "Tên là bắt buộc",
-            "blank": "Tên không được để trống",
-            "max_length": "Tên tối đa 255 ký tự",
+            "required": translate_lazy("Tên là bắt buộc", CommonCatalog.NAME_REQUIRED),
+            "blank": translate_lazy("Tên không được để trống", CommonCatalog.NAME_BLANK),
+            "max_length": translate_lazy(
+                "Tên tối đa 255 ký tự", CommonCatalog.NAME_MAX_255
+            ),
         },
     )
     description = serializers.CharField(
@@ -69,7 +75,9 @@ class ExampleRequest(BaseFormRequest):
         """Field-level: trim 2 đầu và chặn chuỗi chỉ toàn khoảng trắng."""
         value = value.strip()
         if not value:
-            raise serializers.ValidationError("Tên không được để trống")
+            raise serializers.ValidationError(
+                translate("Tên không được để trống", CommonCatalog.NAME_BLANK)
+            )
         return value
 
     def validate(self, attrs: dict) -> dict:
@@ -79,7 +87,9 @@ class ExampleRequest(BaseFormRequest):
             # route_id() lấy id từ URL — loại bản ghi đang sửa khỏi check trùng.
             qs = qs.exclude(pk=self.route_id())
         if qs.exists():
-            raise serializers.ValidationError({"name": "Tên đã tồn tại"})
+            raise serializers.ValidationError(
+                {"name": translate("Tên đã tồn tại", CommonCatalog.NAME_TAKEN)}
+            )
         return attrs
 
     def to_dto(self) -> ExampleDTO:

@@ -35,7 +35,9 @@ from typing import TYPE_CHECKING, Any, Optional, Type, TypeVar
 
 from rest_framework import serializers
 
+from ..catalogs import CommonCatalog
 from ..exceptions import RequestValidationException
+from ..supports import translate_lazy
 
 TEnum = TypeVar("TEnum", bound=enum.Enum)
 
@@ -55,8 +57,11 @@ else:
 class FormRequestMixin(_SerializerBase):
     """Helper + reshape lỗi 422 — trộn với bất kỳ Serializer/ModelSerializer nào."""
 
-    #: Message cho lỗi 422 (override hoặc bọc gettext để i18n).
-    invalid_data_message: str = "Invalid data transmission"
+    #: Message cho lỗi 422 — lazy để resolve NGÔN NGỮ per-request (lúc raise),
+    #: không phải lúc import. Subclass override thì cũng bọc `translate_lazy`.
+    invalid_data_message: str = translate_lazy(
+        "Invalid data transmission", CommonCatalog.INVALID_DATA
+    )
 
     def is_valid(self, *, raise_exception: bool = False) -> bool:
         """Như DRF nhưng khi fail + raise thì ném `RequestValidationException` (422 shape V1)."""
@@ -64,7 +69,8 @@ class FormRequestMixin(_SerializerBase):
         if not valid and raise_exception:
             raise RequestValidationException(
                 fields=self._first_errors(),
-                message=self.invalid_data_message,
+                # str() ép proxy lazy resolve TẠI ĐÂY (per-request).
+                message=str(self.invalid_data_message),
             )
         return valid
 

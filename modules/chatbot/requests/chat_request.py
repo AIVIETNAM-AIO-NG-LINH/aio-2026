@@ -14,6 +14,9 @@ from typing import Optional
 from rest_framework import serializers
 
 from modules.base.requests import BaseFormRequest
+from modules.base.supports import translate_lazy
+
+from ..catalogs import ChatbotCatalog
 
 
 @dataclass(frozen=True)
@@ -29,20 +32,30 @@ class ChatDTO:
 class ChatRequest(BaseFormRequest):
     """Validate payload `{ question, conversation_id?, top_k? }`."""
 
+    # error_messages bọc `translate_lazy` (KHÔNG phải translate): class-attribute
+    # evaluate lúc import, lazy mới resolve ngôn ngữ per-request lúc render lỗi.
     question = serializers.CharField(
         allow_blank=False,
         trim_whitespace=True,
         error_messages={
-            "required": "question là bắt buộc",
-            "blank": "question không được rỗng",
+            "required": translate_lazy(
+                "question là bắt buộc", ChatbotCatalog.QUESTION_REQUIRED
+            ),
+            "blank": translate_lazy(
+                "question không được rỗng", ChatbotCatalog.QUESTION_BLANK
+            ),
         },
     )
     conversation_id = serializers.IntegerField(
         required=False,
         min_value=1,
         error_messages={
-            "invalid": "conversation_id phải là số nguyên",
-            "min_value": "conversation_id không hợp lệ",
+            "invalid": translate_lazy(
+                "conversation_id phải là số nguyên", ChatbotCatalog.CONVERSATION_ID_INVALID
+            ),
+            "min_value": translate_lazy(
+                "conversation_id không hợp lệ", ChatbotCatalog.CONVERSATION_ID_MIN
+            ),
         },
     )
     top_k = serializers.IntegerField(
@@ -50,9 +63,11 @@ class ChatRequest(BaseFormRequest):
         min_value=1,
         max_value=50,
         error_messages={
-            "invalid": "top_k phải là số nguyên",
-            "min_value": "top_k phải lớn hơn 0",
-            "max_value": "top_k tối đa 50",
+            "invalid": translate_lazy(
+                "top_k phải là số nguyên", ChatbotCatalog.TOP_K_INVALID
+            ),
+            "min_value": translate_lazy("top_k phải lớn hơn 0", ChatbotCatalog.TOP_K_MIN),
+            "max_value": translate_lazy("top_k tối đa 50", ChatbotCatalog.TOP_K_MAX),
         },
     )
 
