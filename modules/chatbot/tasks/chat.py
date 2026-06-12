@@ -20,7 +20,7 @@ def generate_conversation_title(conversation_id: int, question: str, answer: str
     Chỉ set khi `title` còn None (idempotent — chạy đua nhiều lượt vẫn an toàn).
     Fail-safe: lỗi LLM/DB chỉ log, không raise (tiêu đề là phụ trợ).
     """
-    from ..models import ChatConversation
+    from ..repositories import ChatConversationRepository
     from ..services.chat.config import ChatConfig
     from ..services.chat.generator import generate_text
 
@@ -28,15 +28,16 @@ def generate_conversation_title(conversation_id: int, question: str, answer: str
     if not chat_config.title_enabled:
         return
 
-    conversation = ChatConversation.objects.filter(id=conversation_id).first()
+    conversations = ChatConversationRepository()
+    conversation = conversations.find(conversation_id)
     if conversation is None or conversation.title is not None:
         return
 
     prompt = (
-        "Đặt một tiêu đề NGẮN (tối đa 60 ký tự) cho cuộc hội thoại sau. "
-        "Chỉ trả về tiêu đề, không thêm dấu ngoặc hay giải thích. "
-        "Dùng cùng ngôn ngữ với câu hỏi.\n\n"
-        f"Người dùng: {question}\nTrợ lý: {answer}"
+        "Write a SHORT title (max 60 characters) for the following conversation. "
+        "Return ONLY the title - no quotes, no explanation. "
+        "Use the same language as the user's question.\n\n"
+        f"User: {question}\nAssistant: {answer}"
     )
     try:
         title = generate_text(prompt, chat_config.title_model)
@@ -48,9 +49,7 @@ def generate_conversation_title(conversation_id: int, question: str, answer: str
     if not title:
         return
     # Set có điều kiện để không đè nếu lượt khác vừa ghi xong (idempotent).
-    ChatConversation.objects.filter(id=conversation_id, title__isnull=True).update(
-        title=title
-    )
+    conversations.set_title_if_empty(conversation_id, title)
     logger.info("[title] conv=%s → %r", conversation_id, title)
 
 
@@ -63,7 +62,7 @@ def index_chat_turn(
     Fail-safe: lỗi embed/OpenSearch chỉ log, không raise (LTM là phụ trợ).
     """
     from ..services.chat.config import ChatConfig
-    from ..services.chat.ltm import ChatHistoryIndex
+    from ..services.opensearch import ChatHistoryIndex
 
     chat_config = ChatConfig.from_env()
     if not chat_config.ltm_enabled:

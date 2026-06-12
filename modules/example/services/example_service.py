@@ -4,7 +4,7 @@ Service chỉ nhận **DTO** (không biết tới HTTP/request) và trả về `
 các helper của `BaseService` để giữ nguyên shape FE của V1:
 
   - `response_success()` — wrap `{ data: { ..., success: 1 } }`.
-  - `code_gone()`        — sugar raise 410 cho "resource không còn tồn tại".
+  - `not_found()`        — sugar raise 404 cho "resource không tồn tại".
 """
 
 from __future__ import annotations
@@ -35,10 +35,10 @@ class ExampleService(BaseService):
         )
 
     def update(self, example_id: int | str, dto: ExampleDTO) -> Response:
-        """Cập nhật theo id; không thấy → 410 Gone (convention nội bộ của base)."""
+        """Cập nhật theo id; không thấy → 404 Not Found."""
         example = Example.objects.filter(pk=example_id).first()
         if example is None:
-            self.code_gone("Example không tồn tại")  # NoReturn — dừng tại đây.
+            self.not_found("Example không tồn tại")  # NoReturn — dừng tại đây.
         example.name = dto.name
         example.description = dto.description
         example.is_active = dto.is_active
@@ -47,9 +47,9 @@ class ExampleService(BaseService):
         return self.response_success(ExampleSerializer(example).data)
 
     def destroy(self, example_id: int | str) -> Response:
-        """Xoá theo id; không thấy → 410 Gone."""
+        """Xoá theo id; không thấy → 404 Not Found."""
         example = Example.objects.filter(pk=example_id).first()
         if example is None:
-            self.code_gone("Example không tồn tại")
+            self.not_found("Example không tồn tại")
         example.delete()
         return self.response_success({"id": int(example_id)})

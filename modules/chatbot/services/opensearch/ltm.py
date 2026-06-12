@@ -16,8 +16,8 @@ from typing import Any
 
 from modules.base.clients.opensearch_client import BaseOpenSearchClient
 
+from ..chat.config import ChatConfig
 from ..rag.embedder import embed_chunks, embed_query
-from .config import ChatConfig
 
 logger = logging.getLogger(__name__)
 
@@ -121,12 +121,15 @@ class ChatHistoryIndex(BaseOpenSearchClient):
             },
         }
         try:
-            response = self._client.search(index=self._chat_config.ltm_index, body=body)
+            # opensearch-py khai báo trả `Any` — annotate lại để giữ type-check phía sau.
+            response: dict[str, Any] = self._client.search(
+                index=self._chat_config.ltm_index, body=body
+            )
         except Exception:
             logger.exception("[ltm] lỗi search (bỏ qua, trả rỗng)")
             return ""
 
-        hits = response.get("hits", {}).get("hits", [])
+        hits: list[dict[str, Any]] = response.get("hits", {}).get("hits", [])
         parts: list[str] = []
         for hit in hits:
             if hit.get("_score", 0.0) < self._chat_config.ltm_min_score:

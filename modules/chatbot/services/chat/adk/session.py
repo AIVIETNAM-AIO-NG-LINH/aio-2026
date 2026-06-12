@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from asgiref.sync import async_to_sync
 from google.adk.events import Event, EventActions
-from google.adk.sessions import BaseSessionService
+from google.adk.sessions import BaseSessionService, Session
 from google.genai import types
 
 from .constants import APP_NAME, ROOT_AGENT_NAME
@@ -20,7 +20,7 @@ async def _create_session_with_history(
     session_service: BaseSessionService,
     user_id: str,
     history_contents: list[types.Content],
-):
+) -> Session:
     """Tạo session mới rồi append từng Content lịch sử thành Event (cũ → mới)."""
     session = await session_service.create_session(
         app_name=APP_NAME,
@@ -39,7 +39,7 @@ def create_session_with_history(
     session_service: BaseSessionService,
     user_id: str,
     history_contents: list[types.Content],
-):
+) -> Session:
     """Bản sync của `_create_session_with_history` (dùng trong view WSGI)."""
     return async_to_sync(_create_session_with_history)(
         session_service, user_id, history_contents

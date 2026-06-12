@@ -15,8 +15,8 @@ def build_user_message(question: str, ltm_context: str = "") -> str:
         return question
 
     return (
-        "### HỘI THOẠI LIÊN QUAN TRƯỚC ĐÂY (trí nhớ dài hạn):\n"
+        "### RELEVANT PAST CONVERSATIONS (long-term memory):\n"
         + ltm_context.strip()
-        + "\n\n### CÂU HỎI:\n"
+        + "\n\n### QUESTION:\n"
         + question
     )

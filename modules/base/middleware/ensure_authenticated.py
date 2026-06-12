@@ -10,27 +10,38 @@ KHÔNG còn tách admin/user, KHÔNG còn check quyền — login là đủ.
 
 Verify "user có thật trong DB" do nginx `auth_request` lo trước; ở đây chỉ trust
 header rồi set id vào ``CurrentUser`` cho downstream.
+
+Dùng theo kiểu route middleware của Laravel (``Route::middleware('auth')``): viết
+dạng ``MiddlewareMixin.process_request`` nên vừa đăng ký global trong ``MIDDLEWARE``
+được, vừa gắn per-route qua decorator ``ensure_authenticated`` (xuất sẵn dưới đây):
+
+    path("chat", ensure_authenticated(ChatView.as_view()))
 """
 
 from __future__ import annotations
 
 from django.http import HttpRequest, JsonResponse
+from django.utils.decorators import decorator_from_middleware
+from django.utils.deprecation import MiddlewareMixin
 
 from modules.base.singletons import CurrentUser
 
 
-class EnsureAuthenticated:
+class EnsureAuthenticated(MiddlewareMixin):
     """Đọc `X-Auth-User-Id`, thiếu/không thấy user thì 401; ngược lại set CurrentUser."""
 
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request: HttpRequest):
-        user_id = int(request.headers.get("X-Auth-User-Id", "0") or "0")
+    def process_request(self, request: HttpRequest):
+        try:
+            user_id = int(request.headers.get("X-Auth-User-Id", "0") or "0")
+        except (TypeError, ValueError):
+            user_id = 0
 
         if user_id <= 0:
             return JsonResponse({"message": "Unauthenticated"}, status=401)
 
         CurrentUser().set(user_id)
+        return None
 
-        return self.get_response(request)
+
+# Decorator gắn per-route (tương đương route middleware Laravel).
+ensure_authenticated = decorator_from_middleware(EnsureAuthenticated)

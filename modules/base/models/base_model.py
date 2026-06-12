@@ -17,6 +17,14 @@ class BaseModel(models.Model):
     hoặc `NotSoftDeleteModel`), KHÔNG kế thừa thẳng `BaseModel`.
     """
 
+    # Khai báo pk TƯỜNG MINH để static checker (Pylance) thấy được `.id` — Django
+    # vốn thêm field này lúc runtime qua metaclass nên IDE báo "Cannot access
+    # attribute". Kwargs phải TRÙNG KHỚP field auto-created (xem 0001_initial của
+    # các app) để makemigrations không sinh AlterField vô nghĩa.
+    id = models.BigAutoField(
+        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -9,8 +9,11 @@ from __future__ import annotations
 
 from google.genai import types
 
-from modules.chatbot.enums import MessageRole, MessageStatus
-from modules.chatbot.models import ChatConversation, ChatMessage
+from modules.chatbot.enums import MessageRole
+from modules.chatbot.models import ChatConversation
+from modules.chatbot.repositories import ChatMessageRepository
+
+_messages = ChatMessageRepository()
 
 
 def _genai_role(role: str) -> str:
@@ -28,17 +31,7 @@ def load_history_contents(
     `exclude_message_ids`: id các message vừa tạo cho lượt hiện tại (câu hỏi user
     + placeholder assistant) — không đưa vào lịch sử.
     """
-    qs = (
-        ChatMessage.objects.filter(
-            conversation_id=conversation.id,
-            status=MessageStatus.SUCCESS,
-        )
-        .exclude(id__in=exclude_message_ids)
-        .exclude(content="")
-        .order_by("-id")[:limit]
-    )
-    # Lấy mới-nhất-trước để giới hạn N, rồi đảo lại cho đúng thứ tự thời gian.
-    messages = list(reversed(list(qs)))
+    messages = _messages.recent_success(conversation.id, exclude_message_ids, limit)
     return [
         types.Content(
             role=_genai_role(msg.role),

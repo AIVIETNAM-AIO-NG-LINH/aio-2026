@@ -19,20 +19,20 @@ Ngoài ra: list hội thoại + list tin nhắn theo user (cho FE dựng lại l
 
 from __future__ import annotations
 
-import json
 import logging
 from collections.abc import Iterator
 
 from asgiref.sync import async_to_sync
 from google.adk.agents.run_config import RunConfig, StreamingMode
+from google.adk.sessions import BaseSessionService
 from google.genai import types
 from rest_framework import status as http_status
 from rest_framework.response import Response
 
 from modules.base.services import BaseService
 
-from ..enums import ConversationStatus, MessageRole, MessageStatus
 from ..models import ChatConversation, ChatMessage
+from ..repositories import ChatConversationRepository, ChatMessageRepository
 from ..requests import ChatDTO
 from .chat.adk.constants import APP_NAME
 from .chat.adk.runner import get_runner, get_session_service
@@ -40,15 +40,18 @@ from .chat.adk.session import create_session_with_history
 from .chat.adk.stream_handler import ADKStreamHandler
 from .chat.config import ChatConfig
 from .chat.history import load_history_contents
-from .chat.ltm import ChatHistoryIndex
 from .chat.prompt import build_user_message
+from .chat.sse import (
+    citations_event,
+    delta_event,
+    done_event,
+    error_event,
+    meta_event,
+    thinking_event,
+)
+from .opensearch import ChatHistoryIndex
 
 logger = logging.getLogger(__name__)
-
-
-def _sse(event: dict) -> str:
-    """Đóng gói 1 event thành dòng SSE (`data: <json>\\n\\n`), giữ Unicode."""
-    return "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
 
 
 def _fmt_dt(value) -> str | None:
@@ -59,49 +62,40 @@ def _fmt_dt(value) -> str | None:
 class ChatService(BaseService):
     """Điều phối 1 lượt chat (stream) + các API đọc lịch sử hội thoại."""
 
+    def __init__(self) -> None:
+        super().__init__()
+        # Repo stateless → giữ làm thuộc tính của service (cũng stateless) là an toàn.
+        self.conversations = ChatConversationRepository()
+        self.messages = ChatMessageRepository()
+
     # --- Chuẩn bị (đồng bộ, có thể raise lỗi nghiệp vụ) --------------------
     def prepare(self, dto: ChatDTO) -> tuple[ChatConversation, ChatMessage, ChatMessage]:
         """Lấy/tạo hội thoại, chặn lượt trùng, lưu message user + placeholder bot."""
         conversation = self._resolve_conversation(dto)
 
         # Chặn gửi tiếp khi lượt trước của hội thoại còn đang xử lý (tránh đua).
-        if ChatMessage.objects.filter(
-            conversation_id=conversation.id, status=MessageStatus.PROCESSING
-        ).exists():
+        if self.messages.has_processing(conversation.id):
             self.exception(
                 "Hội thoại đang xử lý một câu hỏi khác, vui lòng đợi.",
                 http_status.HTTP_409_CONFLICT,
             )
 
-        user_message = ChatMessage.objects.create(
-            conversation=conversation,
-            role=MessageRole.USER,
-            content=dto.question,
-            status=MessageStatus.SUCCESS,
-        )
-        assistant_message = ChatMessage.objects.create(
-            conversation=conversation,
-            role=MessageRole.ASSISTANT,
-            content="",
-            status=MessageStatus.PROCESSING,
-        )
+        user_message = self.messages.add_user_message(conversation, dto.question)
+        assistant_message = self.messages.add_assistant_placeholder(conversation)
         return conversation, user_message, assistant_message
 
     def _resolve_conversation(self, dto: ChatDTO) -> ChatConversation:
         """conversation_id có → tải & kiểm tra quyền sở hữu; không → tạo mới."""
         if dto.conversation_id is not None:
-            conversation = ChatConversation.objects.filter(
-                id=dto.conversation_id, user_id=dto.user_id
-            ).first()
+            conversation = self.conversations.find_owned(
+                dto.conversation_id, dto.user_id
+            )
             if conversation is None:
-                # 410 Gone: convention nội bộ cho "không tồn tại / không thuộc bạn".
-                self.code_gone("Hội thoại không tồn tại")
+                # 404: "không tồn tại / không thuộc bạn" (không lộ resource của user khác).
+                self.not_found("Hội thoại không tồn tại")
             return conversation
 
-        return ChatConversation.objects.create(
-            user_id=dto.user_id,
-            status=ConversationStatus.OPEN,
-        )
+        return self.conversations.create_open(dto.user_id)
 
     # --- Stream (sinh SSE; KHÔNG raise sau khi đã phát header) -------------
     def stream(
@@ -113,10 +107,12 @@ class ChatService(BaseService):
     ) -> Iterator[str]:
         """Generator phát các event SSE: meta (kèm citations) → delta* → done | error.
 
-        Citations được GỘP vào event `meta` (giữ contract cũ). Do agent tự quyết khi
-        nào gọi tool, ta phát `meta` "lazy" — ngay TRƯỚC mẩu output đầu tiên: nếu tool
-        đã chạy thì meta kèm citations, nếu agent trả lời thẳng (không search) thì meta
-        có citations rỗng. Tool gọi lần 2+ (hiếm) phát thêm event `citations`.
+        Shape từng event do `chat/sse.py` quyết định (contract với FE) — ở đây chỉ
+        điều phối THỨ TỰ. Citations được GỘP vào event `meta` (giữ contract cũ). Do
+        agent tự quyết khi nào gọi tool, ta phát `meta` "lazy" — ngay TRƯỚC mẩu
+        output đầu tiên: nếu tool đã chạy thì meta kèm citations, nếu agent trả lời
+        thẳng (không search) thì meta có citations rỗng. Tool gọi lần 2+ (hiếm)
+        phát thêm event `citations`.
         """
         chat_config = ChatConfig.from_env()
 
@@ -128,14 +124,7 @@ class ChatService(BaseService):
         user_id = str(conversation.user_id)
 
         def _meta_event() -> str:
-            return _sse(
-                {
-                    "type": "meta",
-                    "conversation_id": conversation.id,
-                    "message_id": assistant_message.id,
-                    "citations": citations,
-                }
-            )
+            return meta_event(conversation.id, assistant_message.id, citations)
 
         try:
             # 1) LTM — ngữ cảnh hội thoại cũ liên quan (fail-safe → rỗng).
@@ -167,52 +156,40 @@ class ChatService(BaseService):
                 run_config=RunConfig(streaming_mode=StreamingMode.SSE),
             ):
                 for out in handler.process(event):
-                    kind = out["kind"]
-                    if kind == "citations":
-                        citations = out["citations"]
+                    if out.kind == "citations":
+                        citations = out.citations
                         # Lần đầu → gộp vào meta; lần sau → event citations riêng.
                         if not meta_sent:
                             yield _meta_event()
                             meta_sent = True
                         else:
-                            yield _sse({"type": "citations", "citations": citations})
-                    elif kind == "text":
+                            yield citations_event(citations)
+                    elif out.kind == "text":
                         if not meta_sent:  # meta LUÔN đứng trước delta đầu tiên.
                             yield _meta_event()
                             meta_sent = True
-                        answer_parts.append(out["text"])
-                        yield _sse({"type": "delta", "content": out["text"]})
-                    elif kind == "thinking":
+                        answer_parts.append(out.text)
+                        yield delta_event(out.text)
+                    elif out.kind == "thinking":
                         if not meta_sent:
                             yield _meta_event()
                             meta_sent = True
-                        yield _sse({"type": "thinking", "content": out["text"]})
+                        yield thinking_event(out.text)
 
             answer = "".join(answer_parts).strip()
             if not answer:
                 # Agent không trả về text (vd chỉ gọi tool rồi dừng) → coi là lỗi.
                 raise RuntimeError("ADK agent không trả về câu trả lời")
 
-            self._finalize_success(assistant_message, answer, citations)
+            self.messages.mark_success(assistant_message, answer, citations)
             self._enqueue_background(conversation, dto.question, answer)
 
-            yield _sse(
-                {
-                    "type": "done",
-                    "status": "success",
-                    "message_id": assistant_message.id,
-                }
-            )
+            yield done_event(assistant_message.id)
         except Exception:
             logger.exception("[chat] lỗi khi sinh câu trả lời (conv=%s)", conversation.id)
-            self._finalize_error(assistant_message, "".join(answer_parts))
-            yield _sse(
-                {
-                    "type": "error",
-                    "status": "error",
-                    "message": "Có lỗi khi tạo câu trả lời. Vui lòng thử lại.",
-                    "message_id": assistant_message.id,
-                }
+            self.messages.mark_error(assistant_message, "".join(answer_parts))
+            yield error_event(
+                "Có lỗi khi tạo câu trả lời. Vui lòng thử lại.", assistant_message.id
             )
         finally:
             # InMemorySessionService giữ session mãi → PHẢI xoá sau mỗi lượt (tránh rò bộ nhớ).
@@ -221,7 +198,9 @@ class ChatService(BaseService):
 
     # --- Session ADK ------------------------------------------------------
     @staticmethod
-    def _delete_session_safe(session_service, user_id: str, session_id: str) -> None:
+    def _delete_session_safe(
+        session_service: BaseSessionService, user_id: str, session_id: str
+    ) -> None:
         """Xoá session ADK (best-effort) — nuốt lỗi để không phá luồng response."""
         try:
             async_to_sync(session_service.delete_session)(
@@ -230,24 +209,7 @@ class ChatService(BaseService):
         except Exception:
             logger.debug("[chat] xoá session ADK lỗi (bỏ qua)", exc_info=True)
 
-    # --- Cập nhật message + enqueue nền -----------------------------------
-    @staticmethod
-    def _finalize_success(
-        assistant_message: ChatMessage, answer: str, citations: list[dict]
-    ) -> None:
-        assistant_message.content = answer
-        assistant_message.citations = citations
-        assistant_message.status = MessageStatus.SUCCESS
-        assistant_message.save(
-            update_fields=["content", "citations", "status", "updated_at"]
-        )
-
-    @staticmethod
-    def _finalize_error(assistant_message: ChatMessage, partial: str) -> None:
-        assistant_message.content = partial
-        assistant_message.status = MessageStatus.ERROR
-        assistant_message.save(update_fields=["content", "status", "updated_at"])
-
+    # --- Enqueue nền --------------------------------------------------------
     @staticmethod
     def _enqueue_background(
         conversation: ChatConversation, question: str, answer: str
@@ -275,9 +237,9 @@ class ChatService(BaseService):
     # --- API đọc lịch sử ---------------------------------------------------
     def list_conversations(self, user_id: int, page: int, limit: int) -> Response:
         """Danh sách hội thoại của user (mới nhất trước), có phân trang."""
-        qs = ChatConversation.objects.filter(user_id=user_id).order_by("-id")
-        total = qs.count()
-        offset = (page - 1) * limit
+        total, conversations = self.conversations.paginate_for_user(
+            user_id, page, limit
+        )
         items = [
             {
                 "id": c.id,
@@ -286,7 +248,7 @@ class ChatService(BaseService):
                 "created_at": _fmt_dt(c.created_at),
                 "updated_at": _fmt_dt(c.updated_at),
             }
-            for c in qs[offset : offset + limit]
+            for c in conversations
         ]
         return self.response_success(
             {"page": page, "limit": limit, "total": total, "items": items}
@@ -296,15 +258,13 @@ class ChatService(BaseService):
         self, user_id: int, conversation_id: int, page: int, limit: int
     ) -> Response:
         """Danh sách tin nhắn của 1 hội thoại (cũ → mới); kiểm tra quyền sở hữu."""
-        conversation = ChatConversation.objects.filter(
-            id=conversation_id, user_id=user_id
-        ).first()
+        conversation = self.conversations.find_owned(conversation_id, user_id)
         if conversation is None:
-            self.code_gone("Hội thoại không tồn tại")
+            self.not_found("Hội thoại không tồn tại")
 
-        qs = ChatMessage.objects.filter(conversation_id=conversation.id).order_by("id")
-        total = qs.count()
-        offset = (page - 1) * limit
+        total, messages = self.messages.paginate_for_conversation(
+            conversation.id, page, limit
+        )
         items = [
             {
                 "id": m.id,
@@ -314,7 +274,7 @@ class ChatService(BaseService):
                 "status": m.status,
                 "created_at": _fmt_dt(m.created_at),
             }
-            for m in qs[offset : offset + limit]
+            for m in messages
         ]
         return self.response_success(
             {"page": page, "limit": limit, "total": total, "items": items}

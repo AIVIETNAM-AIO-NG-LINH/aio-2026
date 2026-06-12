@@ -5,8 +5,7 @@ Giữ nguyên API V1 để shape response FE không đổi:
   - response_success_json()   — raw JSON, không wrap.
   - exception()               — raise ApiException với status.
   - not_permission()          — sugar 403.
-  - code_gone()               — sugar 410 (convention nội bộ cho "X not found":
-    410 Gone, không phải 404 — FE phân biệt "không tồn tại nữa" vs "route sai").
+  - not_found()               — sugar 404 cho "resource không tồn tại / không thuộc bạn".
   - response_success_failed() — raise FailSuccessException: HTTP 200 nhưng body có
     `success: 0` cho fail nghiệp vụ (login sai, state không hợp lệ), không phải HTTP error.
 
@@ -59,9 +58,9 @@ class BaseService:
         """Sugar — raise 403 Forbidden."""
         raise ApiException(message, http_status.HTTP_403_FORBIDDEN)
 
-    def code_gone(self, message: str) -> NoReturn:
-        """Sugar — raise 410 Gone (resource đã/không tồn tại)."""
-        raise ApiException(message, http_status.HTTP_410_GONE)
+    def not_found(self, message: str) -> NoReturn:
+        """Sugar — raise 404 Not Found (resource không tồn tại / không thuộc bạn)."""
+        raise ApiException(message, http_status.HTTP_404_NOT_FOUND)
 
     def response_success_failed(
         self,
