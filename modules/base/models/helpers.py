@@ -3,6 +3,15 @@
 from __future__ import annotations
 
 
+def fmt_dt(value) -> str | None:
+    """Tương đương `ModelV2::serializeDate` — datetime → 'Y-m-d H:i:s' (DATETIME_FORMAT V1).
+
+    Laravel format tự động khi serialize model; Django build dict thủ công nên
+    transformer/service gọi helper này cho mọi field datetime. None giữ None.
+    """
+    return value.strftime("%Y-%m-%d %H:%M:%S") if value else None
+
+
 def has_value(value) -> bool:
     """Tương đương `ModelV2::checkWhenQuery` — chỉ apply filter khi value có ý nghĩa.
 

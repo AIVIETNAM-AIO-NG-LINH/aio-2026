@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from django.db import models
 
+from . import helpers
 from .managers import BaseManager
 
 
@@ -38,3 +39,7 @@ class BaseModel(models.Model):
     def get_table_name(cls) -> str:
         """≈ `ModelV2::getTableName()` — trả về tên bảng thật trong DB."""
         return cls._meta.db_table
+
+    # ≈ `ModelV2::serializeDate()` — mọi model format datetime ra shape V1
+    # qua `obj.fmt_dt(obj.created_at)` (hoặc import trực tiếp từ helpers).
+    fmt_dt = staticmethod(helpers.fmt_dt)

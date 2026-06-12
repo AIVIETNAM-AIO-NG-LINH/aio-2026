@@ -30,10 +30,12 @@ from rest_framework import status as http_status
 from rest_framework.response import Response
 
 from modules.base.services import BaseService
+from modules.base.transformers import TransformerService
 
 from ..models import ChatConversation, ChatMessage
 from ..repositories import ChatConversationRepository, ChatMessageRepository
 from ..requests import ChatDTO
+from ..transformers import ConversationTransformer, MessageTransformer
 from .chat.adk.constants import APP_NAME
 from .chat.adk.runner import get_runner, get_session_service
 from .chat.adk.session import create_session_with_history
@@ -52,11 +54,6 @@ from .chat.sse import (
 from .opensearch import ChatHistoryIndex
 
 logger = logging.getLogger(__name__)
-
-
-def _fmt_dt(value) -> str | None:
-    """Datetime → 'Y-m-d H:i:s' (đồng bộ DATETIME_FORMAT V1); None giữ None."""
-    return value.strftime("%Y-%m-%d %H:%M:%S") if value else None
 
 
 class ChatService(BaseService):
@@ -236,28 +233,26 @@ class ChatService(BaseService):
 
     # --- API đọc lịch sử ---------------------------------------------------
     def list_conversations(self, user_id: int, page: int, limit: int) -> Response:
-        """Danh sách hội thoại của user (mới nhất trước), có phân trang."""
+        """Danh sách hội thoại của user (mới nhất trước), có phân trang.
+
+        Shape Fractal (khớp API list bên Laravel): `{data: [...], meta: {pagination}}`.
+        """
         total, conversations = self.conversations.paginate_for_user(
             user_id, page, limit
         )
-        items = [
-            {
-                "id": c.id,
-                "title": c.title,
-                "status": c.status,
-                "created_at": _fmt_dt(c.created_at),
-                "updated_at": _fmt_dt(c.updated_at),
-            }
-            for c in conversations
-        ]
-        return self.response_success(
-            {"page": page, "limit": limit, "total": total, "items": items}
+        data = TransformerService.paginator(
+            TransformerService.make_paginator(conversations, total, limit, page),
+            ConversationTransformer(),
         )
+        return self.response_success(data)
 
     def list_messages(
         self, user_id: int, conversation_id: int, page: int, limit: int
     ) -> Response:
-        """Danh sách tin nhắn của 1 hội thoại (cũ → mới); kiểm tra quyền sở hữu."""
+        """Danh sách tin nhắn của 1 hội thoại (cũ → mới); kiểm tra quyền sở hữu.
+
+        Shape Fractal (khớp API list bên Laravel): `{data: [...], meta: {pagination}}`.
+        """
         conversation = self.conversations.find_owned(conversation_id, user_id)
         if conversation is None:
             self.not_found("Hội thoại không tồn tại")
@@ -265,17 +260,8 @@ class ChatService(BaseService):
         total, messages = self.messages.paginate_for_conversation(
             conversation.id, page, limit
         )
-        items = [
-            {
-                "id": m.id,
-                "role": m.role,
-                "content": m.content,
-                "citations": m.citations,
-                "status": m.status,
-                "created_at": _fmt_dt(m.created_at),
-            }
-            for m in messages
-        ]
-        return self.response_success(
-            {"page": page, "limit": limit, "total": total, "items": items}
+        data = TransformerService.paginator(
+            TransformerService.make_paginator(messages, total, limit, page),
+            MessageTransformer(),
         )
+        return self.response_success(data)

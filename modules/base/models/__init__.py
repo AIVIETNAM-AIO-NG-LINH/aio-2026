@@ -13,13 +13,14 @@ Import gọn từ ngoài: `from modules.base.models import SoftDeleteModel`.
 """
 
 from .base_model import BaseModel
-from .helpers import has_value
+from .helpers import fmt_dt, has_value
 from .managers import BaseManager, SoftDeleteManager
 from .not_soft_delete_model import NotSoftDeleteModel
 from .querysets import BaseQuerySet, SoftDeleteQuerySet
 from .soft_delete_model import SoftDeleteModel
 
 __all__ = [
+    "fmt_dt",
     "has_value",
     "BaseQuerySet",
     "SoftDeleteQuerySet",
