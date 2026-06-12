@@ -19,12 +19,22 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import TYPE_CHECKING, Any
+import time
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 if TYPE_CHECKING:
     from opensearchpy import OpenSearch
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
+
+#: Số lần thử tối đa cho thao tác ghi khi gặp lỗi transient (mạng/429/5xx).
+_TRANSIENT_MAX_ATTEMPTS = 3
+#: Backoff khởi điểm giữa hai lần thử (giây), nhân đôi sau mỗi lần.
+_TRANSIENT_BACKOFF_SECONDS = 1.0
+#: Status HTTP coi là transient (quá tải/tạm thời phía server) — retry được.
+_TRANSIENT_STATUSES = {429, 502, 503, 504}
 
 
 def _env(name: str, default: str = "") -> str:
@@ -69,6 +79,40 @@ class BaseOpenSearchClient:
             verify_certs=self._verify_certs,
             ssl_show_warn=self._verify_certs,
         )
+
+    def _retry_transient(self, op: str, action: Callable[[], T]) -> T:
+        """Chạy `action`, retry với backoff khi gặp lỗi transient (connection/429/5xx).
+
+        Chỉ retry lỗi thử-lại-được (ConnectionError/Timeout, hoặc TransportError
+        status 429/502/503/504); lỗi khác (mapping sai, dữ liệu hỏng…) raise ngay
+        vì retry không cứu được. Caller phải đảm bảo `action` idempotent.
+        LƯU Ý: nếu Phase sau bật Celery retry cho task ingest thì gỡ retry này
+        để tránh retry kép (chỉ giữ 1 trong 2 tầng retry).
+        """
+        from opensearchpy.exceptions import (  # lazy như _build_client
+            ConnectionError as OpenSearchConnectionError,
+            TransportError,
+        )
+
+        delay = _TRANSIENT_BACKOFF_SECONDS
+        for attempt in range(1, _TRANSIENT_MAX_ATTEMPTS):
+            try:
+                return action()
+            except TransportError as exc:
+                transient = (
+                    isinstance(exc, OpenSearchConnectionError)
+                    or exc.status_code in _TRANSIENT_STATUSES
+                )
+                if not transient:
+                    raise
+                logger.warning(
+                    "[opensearch] %s lỗi transient (%s) — thử lại %d/%d sau %.0fs",
+                    op, exc, attempt, _TRANSIENT_MAX_ATTEMPTS - 1, delay,
+                )
+                time.sleep(delay)
+                delay *= 2
+        # Lần thử cuối: lỗi gì cũng raise lên caller xử lý trung thực.
+        return action()
 
     def _create_index_if_missing(self, index: str, body: dict[str, Any]) -> None:
         """Tạo index với mapping nếu chưa tồn tại (đã có → chỉ so lại vector dims).
