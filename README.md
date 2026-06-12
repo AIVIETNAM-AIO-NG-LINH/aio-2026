@@ -34,10 +34,12 @@ ai-aio/
 │       └── migrations/
 ├── manage.py
 ├── requirements.txt
-├── Dockerfile              # multi-stage build (Python 3.13)
 ├── entrypoint.sh           # chờ DB → migrate → chạy server
-├── docker-compose.yml      # DEV: MariaDB + runserver (auto-reload)
-├── docker-compose.prod.yml # PROD: MariaDB + Gunicorn
+├── docker/
+│   ├── Dockerfile              # multi-stage build (Python 3.13)
+│   ├── Dockerfile.dockerignore # ignore khi build (BuildKit tự nhận theo tên Dockerfile)
+│   ├── docker-compose.yml      # DEV: runserver (auto-reload)
+│   └── docker-compose.prod.yml # PROD: Gunicorn
 ├── .env                    # biến môi trường (git-ignored)
 └── .env.example            # mẫu để copy thành .env
 ```
@@ -50,9 +52,11 @@ Yêu cầu: **Docker** + **Docker Compose** (không cần cài Python ở máy).
 # 1. (Tuỳ chọn) tạo .env từ mẫu — repo đã kèm sẵn .env dev chạy được ngay
 cp .env.example .env
 
-# 2. Build & chạy
-docker compose up --build
+# 2. Build & chạy (compose file nằm trong docker/)
+docker compose -f docker/docker-compose.yml up --build
 ```
+
+Mẹo: `export COMPOSE_FILE=docker/docker-compose.yml` để khỏi gõ `-f` mỗi lần.
 
 Mở: <http://localhost:8000/api/health/> → trả về:
 
@@ -65,7 +69,7 @@ Server dev tự reload khi bạn sửa code (thư mục được mount vào cont
 ## Chạy production (Gunicorn)
 
 ```bash
-docker compose -f docker-compose.prod.yml up --build -d
+docker compose -f docker/docker-compose.prod.yml up --build -d
 ```
 
 Khác với dev: dùng Gunicorn (3 workers), `DJANGO_DEBUG=False`, không mount code, không expose cổng DB ra ngoài. Nhớ đổi `DJANGO_SECRET_KEY` và mật khẩu DB trong `.env` trước khi deploy thật.
@@ -82,6 +86,9 @@ Khác với dev: dùng Gunicorn (3 workers), `DJANGO_DEBUG=False`, không mount 
 ## Lệnh thường dùng
 
 ```bash
+# Các lệnh dưới giả định đã export COMPOSE_FILE=docker/docker-compose.yml
+# (nếu không, thêm -f docker/docker-compose.yml sau `docker compose`).
+
 # Xem log
 docker compose logs -f web
 

@@ -1,0 +1,101 @@
+# Production-like stack: Gunicorn (uses the Dockerfile CMD).
+# DB dùng chung ở stack nginx-aio (trên aio-net) — không có db riêng nữa.
+# Yêu cầu: đã `docker network create aio-net` và đã up nginx-aio (db, redis) TRƯỚC.
+# Usage (từ repo root): docker compose -f docker/docker-compose.prod.yml up --build -d
+# Giữ project name `ai-aio` — mặc định Compose lấy tên thư mục chứa file (`docker`),
+# sẽ lệch container/volume hiện có (ai-aio-web-1, ai-aio_opensearch-data...).
+name: ai-aio
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    # No command override -> uses the Dockerfile CMD (Gunicorn).
+    env_file: ../.env
+    environment:
+      DB_HOST: db          # alias MariaDB dùng chung (ở nginx-aio)
+      DJANGO_DEBUG: "False"
+    # Không publish ra host — truy cập qua nginx-aio (http://ai.localhost).
+    networks:
+      aio-net:             # shared network — nginx-aio gọi tới qua alias `ai-aio`
+        aliases:
+          - ai-aio
+
+  # Celery worker — đọc task từ redis broker, chạy pipeline ingest nền.
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    # Chờ-DB + migrate là việc của `web`; worker bỏ qua entrypoint, chạy thẳng celery.
+    entrypoint: []
+    command: celery -A config worker --loglevel=info
+    env_file: ../.env
+    environment:
+      DB_HOST: db          # alias MariaDB dùng chung (ở nginx-aio)
+      DJANGO_DEBUG: "False"
+    networks:
+      - aio-net            # cần aio-net để tới redis (broker) + db dùng chung
+
+  # OpenSearch — vector store cho RAG (khớp OPENSEARCH_URL=http://opensearch:9200).
+  # Single-node, security plugin TẮT — chỉ nghe trong aio-net, KHÔNG publish ra host.
+  # Nếu dùng cluster OpenSearch riêng (managed, có auth): xoá service này và trỏ
+  # OPENSEARCH_URL/USER/PASSWORD trong .env sang cluster đó.
+  opensearch:
+    image: opensearchproject/opensearch:2.19.1
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms1g -Xmx1g"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      # Giữ index qua các lần down/up — xoá volume là mất index (phải re-ingest).
+      - opensearch-data:/usr/share/opensearch/data
+    networks:
+      - aio-net
+
+  # --- LightRAG / Knowledge graph (chỉ cần khi LIGHTRAG_ENABLED=true) ---
+  # Thuộc profile `lightrag` — KHÔNG chạy với `docker compose up` thường.
+  # Bật:  docker compose -f docker/docker-compose.prod.yml --profile lightrag up -d
+  # PostgreSQL + pgvector — LightRAG dùng PGKVStorage/PGVectorStorage/PGDocStatusStorage.
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    profiles: ["lightrag"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: lightrag-pg-dev   # khớp LIGHTRAG_PG_PASSWORD trong .env — ĐỔI khi lên prod
+      POSTGRES_DB: lightrag
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - aio-net
+
+  # Neo4j — LightRAG dùng Neo4JStorage cho graph.
+  neo4j:
+    image: neo4j:5
+    restart: unless-stopped
+    profiles: ["lightrag"]
+    environment:
+      NEO4J_AUTH: neo4j/lightrag-neo4j-dev   # khớp LIGHTRAG_NEO4J_PASSWORD trong .env — ĐỔI khi lên prod
+    volumes:
+      - neo4j-data:/data
+    networks:
+      - aio-net
+
+networks:
+  # tạo trước 1 lần:  docker network create aio-net
+  aio-net:
+    external: true
+    name: aio-net
+
+volumes:
+  opensearch-data:
+  postgres-data:
+  neo4j-data:

@@ -1,8 +1,8 @@
+# Patterns tính theo build context (repo root). File này được BuildKit tự nhận
+# vì nằm cạnh Dockerfile với tên <Dockerfile>.dockerignore.
 .git
 .gitignore
-.dockerignore
-Dockerfile
-docker-compose*.yml
+docker/
 
 # Secrets — injected at runtime, never baked into the image
 .env
