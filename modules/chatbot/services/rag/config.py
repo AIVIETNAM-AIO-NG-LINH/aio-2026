@@ -3,8 +3,8 @@
 Gom config rời rạc (chunking, rewrite, rerank…) vào các dataclass nhỏ để phần còn
 lại của pipeline nhận object đã parse sẵn thay vì gọi `os.getenv` rải rác.
 Không đụng `config/settings.py` — RAG là tính năng nền của worker, giữ độc lập.
-(S3/Gemini/OpenSearch không nằm đây — client ở `modules.base.clients` tự quản:
-`S3Client`, `GeminiClient`, `BaseOpenSearchClient`.)
+(S3/Gemini/OpenSearch/LightRAG không nằm đây — client ở `modules.base.clients`
+tự quản: `S3Client`, `GeminiClient`, `BaseOpenSearchClient`, `BaseLightRagClient`.)
 """
 
 from __future__ import annotations
@@ -100,36 +100,4 @@ class RetrieveConfig:
             top_k=_env_int("RETRIEVE_TOP_K", default=5),
             top_n=_env_int("RETRIEVE_TOP_N", default=30),
             rrf_k=_env_int("RETRIEVE_RRF_K", default=60),
-        )
-
-
-@dataclass(frozen=True)
-class LightRagConfig:
-    """Tham số LightRAG (knowledge graph) — PG (KV/Vector/DocStatus) + Neo4j (graph).
-
-    Mặc định `enabled=False` để pipeline bỏ qua hẳn KG khi chưa có hạ tầng PG/Neo4j.
-    """
-
-    enabled: bool
-    pg_host: str
-    pg_port: int
-    pg_user: str
-    pg_password: str
-    pg_database: str
-    neo4j_uri: str
-    neo4j_username: str
-    neo4j_password: str
-
-    @classmethod
-    def from_env(cls) -> "LightRagConfig":
-        return cls(
-            enabled=_env_bool("LIGHTRAG_ENABLED", default=False),
-            pg_host=_env("LIGHTRAG_PG_HOST", default="postgres"),
-            pg_port=_env_int("LIGHTRAG_PG_PORT", default=5432),
-            pg_user=_env("LIGHTRAG_PG_USER", default="postgres"),
-            pg_password=_env("LIGHTRAG_PG_PASSWORD"),
-            pg_database=_env("LIGHTRAG_PG_DATABASE", default="lightrag"),
-            neo4j_uri=_env("LIGHTRAG_NEO4J_URI", default="bolt://neo4j:7687"),
-            neo4j_username=_env("LIGHTRAG_NEO4J_USERNAME", default="neo4j"),
-            neo4j_password=_env("LIGHTRAG_NEO4J_PASSWORD"),
         )
