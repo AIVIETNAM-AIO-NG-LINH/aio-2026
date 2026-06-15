@@ -36,7 +36,7 @@ INSTALLED_APPS = [
     "modules.core",
     "modules.example",
     "modules.media",
-    "modules.chatbot",
+    "modules.chatbot.apps.ChatbotConfig",
 ]
 
 MIDDLEWARE = [
@@ -99,6 +99,12 @@ USE_I18N = True
 USE_TZ = True
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Chatbot giữ migrations trong package `database/` (kiểu Laravel) thay vì
+# `<app>/migrations/` mặc định của Django — khai báo lại vị trí cho app `chatbot`.
+MIGRATION_MODULES = {
+    "chatbot": "modules.chatbot.database.migrations",
+}
 
 # --- Django REST Framework -------------------------------------------------
 REST_FRAMEWORK = {
