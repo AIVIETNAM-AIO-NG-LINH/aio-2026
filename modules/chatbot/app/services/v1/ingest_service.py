@@ -12,11 +12,12 @@ from rest_framework.response import Response
 
 from modules.base.services import BaseService
 
+from ...contracts.services.v1 import IngestDocumentServiceInterface
 from ...http.requests.v1 import IngestDocumentDTO
 from ...tasks import ingest_document
 
 
-class IngestDocumentService(BaseService):
+class IngestDocumentService(BaseService, IngestDocumentServiceInterface):
     """Enqueue pipeline ingest cho document_id đã validate."""
 
     def ingest(self, dto: IngestDocumentDTO) -> Response:
