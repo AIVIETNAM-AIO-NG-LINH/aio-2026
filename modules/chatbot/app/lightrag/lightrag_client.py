@@ -1,9 +1,12 @@
-"""Index tài liệu chatbot vào LightRAG (knowledge graph) — fail-safe, tắt mặc định.
+"""Thao tác LightRAG (knowledge graph) của chatbot — fail-safe, tắt mặc định.
 
-Sau khi rag-index chính xong, bước này nạp text tài liệu vào LightRAG để dựng
-knowledge graph (entity/relation). Toàn bộ phần hạ tầng (env `LIGHTRAG_*`, dựng
-LightRAG instance PG/Neo4j + Gemini, vòng đời storages) do `BaseLightRagClient`
-ở base tự quản — file này chỉ còn thao tác domain: re-index 1 tài liệu.
+Hai class domain:
+  * `LightRagIndexer` — lúc ingest, nạp text tài liệu vào KG (entity/relation).
+  * `LightRagQuerier` — lúc chat, truy hồi ngữ cảnh thô từ KG cho agent ADK.
+
+Toàn bộ phần hạ tầng (env `LIGHTRAG_*`, dựng LightRAG instance PG/Neo4j + Gemini,
+vòng đời storages) do `BaseLightRagClient` ở base tự quản — file này chỉ còn
+thao tác domain.
 
 NGUYÊN TẮC:
   * `LIGHTRAG_ENABLED=false` (mặc định) → bỏ qua hoàn toàn, không import lightrag.
@@ -62,5 +65,55 @@ class LightRagIndexer(BaseLightRagClient):
             await rag.ainsert(text, ids=doc_id)
             logger.info("[lightrag] document_id=%s đã nạp KG (doc_id=%s)", document_id, doc_id)
             return True
+
+        return await self._run_with_rag(action)
+
+
+class LightRagQuerier(BaseLightRagClient):
+    """Truy vấn knowledge graph lúc chat — trả CONTEXT thô (không sinh câu trả lời).
+
+    Dùng `only_need_context=True` nên LightRAG chỉ truy hồi ngữ cảnh (entity/relation
+    + đoạn liên quan) chứ KHÔNG gọi LLM sinh câu trả lời — giữ đúng vai trò "tool truy
+    hồi" như `tools.knowledge_base.search()`; việc tổng hợp/trả lời là của agent ADK.
+    """
+
+    #: mode "mix" = gộp truy hồi vector (đoạn) + graph (entity/relation) — hợp nhất
+    #: thế mạnh cả hai cho câu hỏi vừa tra cứu vừa bắc cầu quan hệ.
+    _QUERY_MODE = "mix"
+
+    def query(self, question: str) -> str:
+        """Sync wrapper fail-safe: trả context string cho agent, "" nếu tắt/rỗng/lỗi.
+
+        KHÔNG raise: KG là nguồn phụ, lỗi chỉ log để agent vẫn trả lời được bằng
+        `search_knowledge_base`. Chạy bằng `asyncio.run()` vì ADK gọi tool sync.
+        """
+        if not self.enabled:
+            logger.info("[lightrag] LIGHTRAG_ENABLED=false, bỏ qua truy vấn KG")
+            return ""
+        if not question or not question.strip():
+            return ""
+
+        try:
+            return asyncio.run(self._aquery(question.strip()))
+        except Exception:
+            logger.exception("[lightrag] lỗi truy vấn KG (trả rỗng)")
+            return ""
+
+    async def _aquery(self, question: str) -> str:
+        """Gọi `aquery` với `only_need_context=True` → trả ngữ cảnh thô (string)."""
+
+        async def action(rag: LightRAG) -> str:
+            from lightrag import QueryParam
+
+            result = await rag.aquery(
+                question,
+                param=QueryParam(mode=self._QUERY_MODE, only_need_context=True),
+            )
+            # `aquery` có thể trả str (context) hoặc cấu trúc khác tuỳ phiên bản —
+            # ép về str cho chắc; rỗng/None → "".
+            context = result if isinstance(result, str) else (str(result) if result else "")
+            logger.info("[lightrag] truy vấn KG question=%r → %d ký tự ngữ cảnh",
+                        question, len(context))
+            return context
 
         return await self._run_with_rag(action)

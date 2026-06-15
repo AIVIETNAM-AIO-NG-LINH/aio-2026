@@ -46,3 +46,32 @@ def search_knowledge_base(query: str, top_k: int = _DEFAULT_TOP_K) -> dict[str, 
 
     logger.info("[adk-tool] search_knowledge_base query=%r → %d kết quả", query, len(chunks))
     return {"results": chunks}
+
+
+def search_knowledge_graph(query: str) -> dict[str, Any]:
+    """Search the knowledge graph for entities and the relationships between them.
+
+    Use this when a question is about HOW things relate — connections, dependencies,
+    causes, comparisons across multiple documents, or multi-hop reasoning (e.g. "how
+    does X affect Y", "what links A to B") that a plain passage search may not capture.
+    For simple lookups of a single fact, prefer `search_knowledge_base` instead.
+
+    Args:
+        query: The natural-language question (use the user's wording or a refined version).
+
+    Returns:
+        A dict with key "context": a text block of related entities, relationships and
+        supporting passages from the knowledge graph. An empty string means the graph
+        had nothing relevant (or the graph is disabled).
+    """
+    # Import trong hàm để tránh phụ thuộc vòng lúc nạp module agent.
+    from modules.chatbot.app.lightrag.lightrag_client import LightRagQuerier
+
+    try:
+        context = LightRagQuerier().query(query)
+    except Exception:
+        logger.exception("[adk-tool] search_knowledge_graph lỗi (trả rỗng)")
+        return {"context": ""}
+
+    logger.info("[adk-tool] search_knowledge_graph query=%r → %d ký tự", query, len(context))
+    return {"context": context}
