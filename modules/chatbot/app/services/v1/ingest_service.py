@@ -12,8 +12,8 @@ from rest_framework.response import Response
 
 from modules.base.services import BaseService
 
-from ..http.requests.v1 import IngestDocumentDTO
-from ..tasks import ingest_document
+from ...http.requests.v1 import IngestDocumentDTO
+from ...tasks import ingest_document
 
 
 class IngestDocumentService(BaseService):

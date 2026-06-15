@@ -17,7 +17,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from .chunk_config import ChunkConfig
 from .contextual_header_config import ContextualHeaderConfig
-from .extractor import ExtractedPage
+from .extract_helper import ExtractedPage
 
 # Tách theo đoạn → dòng → ranh giới câu (regex lookbehind cuối câu).
 _SEPARATORS = ["\n\n", "\n", "(?<=[.!?])"]

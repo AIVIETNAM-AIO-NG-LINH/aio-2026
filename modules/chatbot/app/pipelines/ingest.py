@@ -2,9 +2,9 @@
 
 Đây là phần thân thật của task `chatbot.ingest_document` (Phase 1) — chạy trong
 worker nền nên nằm ở `pipelines/`, không phải `services/` (vốn dành cho class
-nhận request). Các bước riêng của ingest (extractor, page_chunker, config) nằm
-cùng package này; bước dùng chung với retrieve (embedder, indexer…) vẫn ở
-`services/`. Đọc tài liệu từ DB dùng chung (managed=False, chỉ ghi DATA cột
+nhận request). Các helper hạ tầng của ingest (extract_helper, page_chunker,
+config) nằm ở `support/`; bước dùng chung với retrieve (embedder, indexer…) vẫn
+ở `services/`. Đọc tài liệu từ DB dùng chung (managed=False, chỉ ghi DATA cột
 `status`), tải file gốc từ S3, trích text bằng Gemini, chunk + embed, rồi index
 parent-child vào OpenSearch.
 
@@ -27,10 +27,10 @@ from modules.base.clients.s3_client import S3Client
 
 from ..services.rag.embedder import embed_chunks
 from ..services.rag.exceptions import UnsupportedDocumentError
+from ..lightrag.lightrag_client import LightRagIndexer
 from ..opensearch import OpenSearchIndexer, SummaryIndexer
-from .extractor import extract_pages, pages_to_text
-from .lightrag_client import LightRagIndexer
-from .page_chunker import PageChunk, chunk_pages
+from ..support.extract_helper import extract_pages, pages_to_text
+from ..support.page_chunker import PageChunk, chunk_pages
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +109,12 @@ def run_ingest_pipeline(document_id: int) -> None:
     _set_status(document_id, DocumentStatus.PENDING)
 
     media = document.media
+    # Không có media (media_id null hoặc bản ghi mồ côi) → không thể đọc file → FAILED.
+    if media is None:
+        logger.warning("[pipeline] document_id=%s thiếu media -> FAILED", document_id)
+        _set_status(document_id, DocumentStatus.FAILED)
+        return
+
     kind = media.document_kind
 
     # Gate loại file: chỉ PDF/Word đi tiếp; còn lại FAILED + return.

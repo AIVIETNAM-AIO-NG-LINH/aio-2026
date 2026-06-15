@@ -28,10 +28,12 @@ class ChatbotDocument(SoftDeleteModel):
         on_delete=models.DO_NOTHING,
         db_column="media_id",
         related_name="chatbot_documents",
+        null=True,
+        blank=True,
     )
     # `media_id` do ForeignKey tự sinh — khai báo kiểu để type checker không coi là Any
     # (annotation rỗng, không gán value nên Django KHÔNG hiểu nhầm thành field).
-    media_id: int
+    media_id: int | None
 
     status = models.CharField(max_length=20, choices=DocumentStatus.choices)
 
