@@ -25,8 +25,8 @@ from opensearchpy.exceptions import OpenSearchException
 
 from modules.base.clients.s3_client import S3Client
 
-from ..services.rag.embedder import embed_chunks
-from ..services.rag.exceptions import UnsupportedDocumentError
+from ..rag.embedder import embed_chunks
+from ..rag.exceptions import UnsupportedDocumentError
 from ..lightrag.lightrag_client import LightRagIndexer
 from ..opensearch import OpenSearchIndexer, SummaryIndexer
 from ..support.extract_helper import extract_pages, pages_to_text

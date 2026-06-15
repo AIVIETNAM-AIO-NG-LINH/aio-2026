@@ -23,7 +23,11 @@ Mỗi phần tử trong `citations` theo contract `citations.Citation`.
 from __future__ import annotations
 
 import json
-from typing import Any
+from collections.abc import Iterable, Iterator
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from ..adk.stream_handler import StreamChunk
 
 
 def _sse(payload: dict[str, Any]) -> str:
@@ -75,3 +79,55 @@ def error_event(message: str, message_id: int) -> str:
             "message_id": message_id,
         }
     )
+
+
+def emit_chat_events(
+    chunks: Iterable[StreamChunk],
+    *,
+    conversation_id: int,
+    message_id: int,
+    answer_parts: list[str],
+) -> Iterator[str]:
+    """Điều phối THỨ TỰ event SSE từ luồng StreamChunk đã chuẩn hoá.
+
+    Mỗi `chunk` có `.kind` ∈ {"citations","text","thinking"} (+ `.citations`/`.text`).
+    `meta` phát "lazy" — ngay TRƯỚC mẩu output đầu tiên: nếu tool đã chạy thì meta kèm
+    citations, nếu agent trả thẳng thì meta có citations rỗng. Tool gọi lần 2+ phát
+    thêm event `citations`.
+
+    `answer_parts` do CALLER sở hữu & truyền vào (generator chỉ append) — để khi lỗi
+    giữa chừng caller vẫn giữ được phần trả lời dở mà lưu (mark_error). Citations cuối
+    cùng trả về qua `yield from`:
+
+        citations = yield from emit_chat_events(
+            chunks, conversation_id=..., message_id=..., answer_parts=answer_parts
+        )
+    """
+    citations: list[dict[str, Any]] = []
+    meta_sent = False
+
+    def _meta() -> str:  # đọc `citations` tại thời điểm gọi (đã/ chưa có tool).
+        return meta_event(conversation_id, message_id, citations)
+
+    for out in chunks:
+        if out.kind == "citations":
+            citations = out.citations
+            # Lần đầu → gộp vào meta; lần sau → event citations riêng.
+            if not meta_sent:
+                yield _meta()
+                meta_sent = True
+            else:
+                yield citations_event(citations)
+        elif out.kind == "text":
+            if not meta_sent:  # meta LUÔN đứng trước delta đầu tiên.
+                yield _meta()
+                meta_sent = True
+            answer_parts.append(out.text)
+            yield delta_event(out.text)
+        elif out.kind == "thinking":
+            if not meta_sent:
+                yield _meta()
+                meta_sent = True
+            yield thinking_event(out.text)
+
+    return citations

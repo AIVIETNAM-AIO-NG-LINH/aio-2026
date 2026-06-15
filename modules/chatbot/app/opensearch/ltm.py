@@ -16,8 +16,8 @@ from typing import Any
 
 from modules.base.clients.opensearch_client import BaseOpenSearchClient
 
-from ..services.chat.config import ChatConfig
-from ..services.rag.embedder import embed_chunks, embed_query
+from ..chat_pipeline.config import ChatConfig
+from ..rag.embedder import embed_chunks, embed_query
 
 logger = logging.getLogger(__name__)
 

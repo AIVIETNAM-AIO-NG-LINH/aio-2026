@@ -33,6 +33,10 @@ def _ensure_google_api_key() -> None:
             os.environ["GOOGLE_API_KEY"] = api_key
 
 
+# Map key 1 lần ngay khi import module (eager), không chờ request đầu tiên.
+_ensure_google_api_key()
+
+
 def get_session_service() -> BaseSessionService:
     """Trả session service dùng chung."""
     return _session_service
@@ -42,7 +46,6 @@ def get_runner() -> Runner:
     """Lấy Runner (tạo lười, cache). An toàn gọi đồng thời với session_id khác nhau."""
     global _runner
     if _runner is None:
-        _ensure_google_api_key()
         _runner = Runner(
             app_name=APP_NAME,
             agent=create_root_agent(),

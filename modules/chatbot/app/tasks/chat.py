@@ -21,8 +21,8 @@ def generate_conversation_title(conversation_id: int, question: str, answer: str
     Fail-safe: lỗi LLM/DB chỉ log, không raise (tiêu đề là phụ trợ).
     """
     from ..repositories import ChatConversationRepository
-    from ..services.chat.config import ChatConfig
-    from ..services.chat.generator import generate_text
+    from ..chat_pipeline.config import ChatConfig
+    from ..chat_pipeline.generator import generate_text
 
     chat_config = ChatConfig.from_env()
     if not chat_config.title_enabled:
@@ -61,7 +61,7 @@ def index_chat_turn(
 
     Fail-safe: lỗi embed/OpenSearch chỉ log, không raise (LTM là phụ trợ).
     """
-    from ..services.chat.config import ChatConfig
+    from ..chat_pipeline.config import ChatConfig
     from ..opensearch import ChatHistoryIndex
 
     chat_config = ChatConfig.from_env()

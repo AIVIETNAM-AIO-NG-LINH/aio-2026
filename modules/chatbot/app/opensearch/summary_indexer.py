@@ -16,7 +16,7 @@ from typing import Any
 from modules.base.clients.gemini_client import GeminiClient
 from modules.base.clients.opensearch_client import BaseOpenSearchClient
 
-from ..services.rag.embedder import embed_chunks
+from ..rag.embedder import embed_chunks
 
 logger = logging.getLogger(__name__)
 

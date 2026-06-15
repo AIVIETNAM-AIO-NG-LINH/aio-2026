@@ -10,7 +10,7 @@ import functools
 
 from google.adk.agents import Agent
 
-from ..config import ChatConfig
+from ..chat_pipeline.config import ChatConfig
 from .constants import ROOT_AGENT_NAME
 from .tools import search_knowledge_base
 

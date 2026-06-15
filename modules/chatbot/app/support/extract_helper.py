@@ -12,7 +12,7 @@ summary/LightRAG). `ExtractedPage` được re-export từ `pdf_extract_helper`.
 
 from __future__ import annotations
 
-from ..services.rag.exceptions import UnsupportedDocumentError
+from ..rag.exceptions import UnsupportedDocumentError
 from .pdf_extract_helper import ExtractedPage, extract_pdf_pages
 from .word_to_pdf_helper import word_to_pdf
 

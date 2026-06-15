@@ -14,7 +14,7 @@ import shutil
 import subprocess
 import tempfile
 
-from ..services.rag.exceptions import UnsupportedDocumentError
+from ..rag.exceptions import UnsupportedDocumentError
 
 logger = logging.getLogger(__name__)
 

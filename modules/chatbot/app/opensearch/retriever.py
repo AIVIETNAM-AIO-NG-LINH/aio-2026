@@ -1,9 +1,9 @@
 """Hybrid retrieval trên `rag-index` (parent-child): BM25 + kNN, hợp nhất bằng RRF.
 
-Mỗi truy vấn (gồm query gốc + các biến thể viết lại) chạy 2 lượt search trên CHILD
-doc: BM25 trên `chunk_text` và kNN trên `chunk_vector`. Mọi danh sách kết quả được
-hợp nhất bằng Reciprocal Rank Fusion (RRF) — không cần search pipeline hybrid của
-OpenSearch nên hoạt động trên cụm tối thiểu. Top_n child sau hợp nhất được gắn
+Query chạy 2 lượt search trên CHILD doc: BM25 trên `chunk_text` và kNN trên
+`chunk_vector`. Hai danh sách kết quả được hợp nhất bằng Reciprocal Rank Fusion
+(RRF) — không cần search pipeline hybrid của OpenSearch nên hoạt động trên cụm
+tối thiểu. Top_n child sau hợp nhất được gắn
 metadata PARENT (document_id, media_id, original_name) + số trang `page` để trả cho
 caller trích dẫn "trang X".
 
@@ -72,7 +72,7 @@ class Retriever(BaseOpenSearchClient):
                 child_id = str(hit.get("_id"))
                 scores[child_id] = scores.get(child_id, 0.0) + 1.0 / (rrf_k + rank)
                 if child_id not in meta:
-                    source = hit.get("_source", {})
+                    source: dict[str, Any] = hit.get("_source", {})
                     meta[child_id] = {
                         "chunk_text": source.get("chunk_text", ""),
                         "page": source.get("page"),
@@ -131,21 +131,22 @@ class Retriever(BaseOpenSearchClient):
     # --- Public -------------------------------------------------------------
     def retrieve(
         self,
-        query_variants: list[tuple[str, list[float] | None]],
+        query: str,
+        query_vector: list[float] | None,
         top_n: int,
         rrf_k: int,
     ) -> list[dict[str, Any]]:
-        """Hybrid search cho mọi (query_text, query_vector) → RRF → top_n + metadata.
+        """Hybrid search BM25 + kNN cho 1 query → RRF → top_n + metadata parent.
 
-        Mỗi variant đóng góp 1 list BM25 (luôn) + 1 list kNN (nếu có vector). Trả về
-        list dict {chunk_text, page, document_id, media_id, original_name, score}.
+        BM25 trên `chunk_text` (luôn) + kNN trên `chunk_vector` (nếu có vector;
+        vector None → chỉ BM25, fail-safe). Trả về list dict
+        {chunk_text, page, document_id, media_id, original_name, score}.
         """
         ranked_lists: list[list[dict[str, Any]]] = []
-        for text, vector in query_variants:
-            if text:
-                ranked_lists.append(self._bm25_hits(text, top_n))
-            if vector:
-                ranked_lists.append(self._knn_hits(vector, top_n))
+        if query:
+            ranked_lists.append(self._bm25_hits(query, top_n))
+        if query_vector:
+            ranked_lists.append(self._knn_hits(query_vector, top_n))
 
         fused = self._fuse(ranked_lists, rrf_k, top_n)
         if not fused:

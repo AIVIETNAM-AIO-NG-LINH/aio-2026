@@ -1,4 +1,4 @@
-"""Tool RAG cho ADK agent — bọc `RetrieveService.retrieve_chunks()`.
+"""Tool RAG cho ADK agent — bọc `tools.knowledge_base.search()`.
 
 ADK tự sinh schema tool từ chữ ký + docstring của hàm, nên docstring viết rõ ràng
 (tiếng Anh) để model biết khi nào gọi. Hàm trả về DICT cố định `{"results": [...]}`
@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from ..config import ChatConfig
+from ..chat_pipeline.config import ChatConfig
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +36,10 @@ def search_knowledge_base(query: str, top_k: int = _DEFAULT_TOP_K) -> dict[str, 
         relevant document was found.
     """
     # Import trong hàm để tránh phụ thuộc vòng lúc nạp module agent.
-    from modules.chatbot.app.services.retrieve_service import RetrieveService
+    from modules.chatbot.app.tools import knowledge_base
 
     try:
-        chunks = RetrieveService().retrieve_chunks(query, top_k=top_k)
+        chunks = knowledge_base.search(query, top_k=top_k)
     except Exception:
         logger.exception("[adk-tool] search_knowledge_base lỗi (trả rỗng)")
         return {"results": []}

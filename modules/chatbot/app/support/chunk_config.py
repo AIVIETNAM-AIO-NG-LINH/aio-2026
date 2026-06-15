@@ -1,13 +1,13 @@
-"""Config chunking — tách từ `services/rag/config.py`, đặt ở `pipelines/` cạnh ingest.
+"""Config chunking — tách từ `rag/config.py`, đặt ở `pipelines/` cạnh ingest.
 
-Helper `_env_int` vẫn dùng chung từ `services/rag/config.py` (nơi giữ các config còn lại).
+Helper `_env_int` vẫn dùng chung từ `rag/config.py` (nơi giữ các config còn lại).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..services.rag.config import _env_int
+from ..rag.config import _env_int
 
 
 @dataclass(frozen=True)

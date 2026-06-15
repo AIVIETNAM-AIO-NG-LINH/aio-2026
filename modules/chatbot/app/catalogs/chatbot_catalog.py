@@ -30,13 +30,6 @@ class ChatbotCatalog(LangCatalog):
     TOP_K_MIN = _NS + ".TOP_K_MIN"
     TOP_K_MAX = _NS + ".TOP_K_MAX"
 
-    # Validate retrieve nội bộ (RetrieveRequest)
-    QUERY_REQUIRED = _NS + ".QUERY_REQUIRED"
-    QUERY_BLANK = _NS + ".QUERY_BLANK"
-    TOP_N_INVALID = _NS + ".TOP_N_INVALID"
-    TOP_N_MIN = _NS + ".TOP_N_MIN"
-    TOP_N_MAX = _NS + ".TOP_N_MAX"
-
     # Validate ingest nội bộ (IngestDocumentRequest)
     DOCUMENT_ID_REQUIRED = _NS + ".DOCUMENT_ID_REQUIRED"
     DOCUMENT_ID_INVALID = _NS + ".DOCUMENT_ID_INVALID"

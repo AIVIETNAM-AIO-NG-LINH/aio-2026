@@ -1,13 +1,13 @@
-"""Config contextual header — tách từ `services/rag/config.py`, đặt ở `pipelines/` cạnh ingest.
+"""Config contextual header — tách từ `rag/config.py`, đặt ở `pipelines/` cạnh ingest.
 
-Helper `_env`/`_env_bool` vẫn dùng chung từ `services/rag/config.py` (nơi giữ các config còn lại).
+Helper `_env`/`_env_bool` vẫn dùng chung từ `rag/config.py` (nơi giữ các config còn lại).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..services.rag.config import _env, _env_bool
+from ..rag.config import _env, _env_bool
 
 
 @dataclass(frozen=True)

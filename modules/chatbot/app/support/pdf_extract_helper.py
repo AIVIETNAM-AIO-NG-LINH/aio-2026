@@ -21,7 +21,7 @@ from pypdf import PageObject, PdfReader, PdfWriter
 
 from modules.base.clients.gemini_client import GeminiClient
 
-from ..services.rag.exceptions import UnsupportedDocumentError
+from ..rag.exceptions import UnsupportedDocumentError
 
 logger = logging.getLogger(__name__)
 

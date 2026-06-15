@@ -1,6 +1,6 @@
 """Cấu hình pipeline RAG — đọc TOÀN BỘ từ biến môi trường (12-factor).
 
-Gom config rời rạc (chunking, rewrite, rerank…) vào các dataclass nhỏ để phần còn
+Gom config rời rạc (chunking, rerank…) vào các dataclass nhỏ để phần còn
 lại của pipeline nhận object đã parse sẵn thay vì gọi `os.getenv` rải rác.
 Không đụng `config/settings.py` — RAG là tính năng nền của worker, giữ độc lập.
 (S3/Gemini/OpenSearch/LightRAG không nằm đây — client ở `modules.base.clients`
@@ -34,30 +34,6 @@ def _env_int(name: str, default: int) -> int:
         return int(raw) if raw else default
     except ValueError:
         return default
-
-
-@dataclass(frozen=True)
-class QueryRewriteConfig:
-    """Viết lại / mở rộng truy vấn trước khi search (Gemini Flash, song ngữ Việt↔Anh).
-
-    Chuẩn hoá câu hỏi + sinh thêm biến thể dịch/đồng nghĩa để tăng recall trên kho
-    dữ liệu song ngữ. `enabled=False` hoặc lỗi gọi LLM → fallback chỉ dùng query gốc
-    (fail-safe, xem `query_rewriter.py`). `max_variants` giới hạn TỔNG số truy vấn
-    (gồm cả query gốc) đưa vào hybrid search để chặn chi phí.
-    """
-
-    enabled: bool
-    model: str
-    max_variants: int
-
-    @classmethod
-    def from_env(cls) -> "QueryRewriteConfig":
-        return cls(
-            enabled=_env_bool("QUERY_REWRITE_ENABLED", default=True),
-            # Tái dùng Gemini Flash; tách env riêng để chỉnh độc lập với extract/summary.
-            model=_env("QUERY_REWRITE_MODEL", default="gemini-2.5-flash"),
-            max_variants=_env_int("QUERY_REWRITE_MAX_VARIANTS", default=3),
-        )
 
 
 @dataclass(frozen=True)
@@ -96,8 +72,9 @@ class RetrieveConfig:
 
     @classmethod
     def from_env(cls) -> "RetrieveConfig":
+        # Fix cứng trong code (không đọc env) — chỉnh trực tiếp tại đây khi cần.
         return cls(
-            top_k=_env_int("RETRIEVE_TOP_K", default=5),
-            top_n=_env_int("RETRIEVE_TOP_N", default=30),
-            rrf_k=_env_int("RETRIEVE_RRF_K", default=60),
+            top_k=5,    # số chunk trả về cuối cùng (sau rerank).
+            top_n=30,   # số ứng viên lấy từ hybrid search để đưa vào rerank.
+            rrf_k=60,   # hằng số RRF khi hợp nhất BM25 + kNN.
         )

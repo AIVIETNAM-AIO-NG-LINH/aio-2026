@@ -20,7 +20,7 @@ from typing import Any, Literal
 
 from google.adk.events import Event
 
-from ..citations import normalize_citations
+from ..chat_pipeline.citations import normalize_citations
 from .constants import SEARCH_TOOL_NAME
 
 logger = logging.getLogger(__name__)

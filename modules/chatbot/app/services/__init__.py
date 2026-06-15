@@ -1,7 +1,9 @@
-"""Service layer của module Chatbot — re-export để view import gọn."""
+"""Service layer của module Chatbot — re-export để view import gọn.
 
-from .chat_service import ChatService
-from .retrieve_service import RetrieveService
-from .v1 import IngestDocumentService
+(Truy hồi chunk đã chuyển sang `app/tools/` thành function `knowledge_base.search()`
+— là công cụ, không phải orchestration. Import `from ..tools import knowledge_base`.)
+"""
 
-__all__ = ["ChatService", "IngestDocumentService", "RetrieveService"]
+from .v1 import ChatService, IngestDocumentService
+
+__all__ = ["ChatService", "IngestDocumentService"]

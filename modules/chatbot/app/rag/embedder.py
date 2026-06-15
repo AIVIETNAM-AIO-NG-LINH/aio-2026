@@ -84,7 +84,13 @@ def embed_query(
     if not text:
         return None
 
-    vectors = GeminiClient().embed([text], expected_dims, _TASK_TYPE_QUERY)
+    try:
+        vectors = GeminiClient().embed([text], expected_dims, _TASK_TYPE_QUERY)
+    except Exception:
+        # Gọi Gemini lỗi (mạng/timeout/auth/rate-limit) → None để caller fallback
+        # (chỉ BM25 / bỏ LTM), không làm hỏng cả truy hồi (khớp contract docstring).
+        logger.exception("[embed_query] lỗi gọi Gemini (bỏ qua, trả None)")
+        return None
     if not vectors:
         logger.warning("[embed_query] model không trả embedding")
         return None

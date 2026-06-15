@@ -33,26 +33,19 @@ from modules.base.services import BaseService
 from modules.base.supports import translate
 from modules.base.transformers import TransformerService
 
-from ..catalogs import ChatbotCatalog
-from ..models import ChatConversation, ChatMessage
-from ..repositories import ChatConversationRepository, ChatMessageRepository
-from ..http.requests.v1 import ChatDTO
-from ..transformers import ConversationTransformer, MessageTransformer
-from .chat.adk.constants import APP_NAME
-from .chat.adk.runner import get_runner, get_session_service
-from .chat.adk.session import create_session_with_history
-from .chat.adk.stream_handler import ADKStreamHandler
-from .chat.config import ChatConfig
-from .chat.history import load_history_contents
-from .chat.prompt import build_user_message
-from .chat.sse import (
-    citations_event,
-    delta_event,
-    done_event,
-    error_event,
-    meta_event,
-    thinking_event,
-)
+from ...catalogs import ChatbotCatalog
+from ...models import ChatConversation, ChatMessage
+from ...repositories import ChatConversationRepository, ChatMessageRepository
+from ...http.requests.v1 import ChatDTO
+from ...transformers import ConversationTransformer, MessageTransformer
+from ...adk.constants import APP_NAME
+from ...adk.runner import get_runner, get_session_service
+from ...adk.session import create_session_with_history
+from ...adk.stream_handler import ADKStreamHandler
+from ...chat_pipeline.config import ChatConfig
+from ...chat_pipeline.history import load_history_contents
+from ...chat_pipeline.prompt import build_user_message
+from ...chat_pipeline.sse import done_event, emit_chat_events, error_event
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +105,7 @@ class ChatService(BaseService):
     ) -> Iterator[str]:
         """Generator phát các event SSE: meta (kèm citations) → delta* → done | error.
 
-        Shape từng event do `chat/sse.py` quyết định (contract với FE) — ở đây chỉ
+        Shape từng event do `chat_pipeline/sse.py` quyết định (contract với FE) — ở đây chỉ
         điều phối THỨ TỰ. Citations được GỘP vào event `meta` (giữ contract cũ). Do
         agent tự quyết khi nào gọi tool, ta phát `meta` "lazy" — ngay TRƯỚC mẩu
         output đầu tiên: nếu tool đã chạy thì meta kèm citations, nếu agent trả lời
@@ -122,28 +115,21 @@ class ChatService(BaseService):
         chat_config = ChatConfig.from_env()
 
         answer_parts: list[str] = []
-        citations: list[dict] = []
-        meta_sent = False
         session_service = get_session_service()
         session = None
         user_id = str(conversation.user_id)
 
-        def _meta_event() -> str:
-            return meta_event(conversation.id, assistant_message.id, citations)
-
         try:
-            # 1) LTM — ngữ cảnh hội thoại cũ liên quan (fail-safe → rỗng).
+            # 1) LTM — ngữ cảnh hội thoại cũ liên quan. Tự fail-safe ở tầng dưới:
+            # `embed_query` nuốt lỗi gọi Gemini → None, `search()` nuốt lỗi query → "".
             ltm_context = ""
             if chat_config.ltm_enabled:
-                try:
-                    # Lazy import — tránh circular import với services/__init__.
-                    from ..opensearch import ChatHistoryIndex
+                # Lazy import — tránh circular import với services/__init__.
+                from ...opensearch import ChatHistoryIndex
 
-                    ltm_context = ChatHistoryIndex(chat_config).search(
-                        conversation.user_id, dto.question
-                    )
-                except Exception:
-                    logger.exception("[chat] LTM search lỗi (bỏ qua)")
+                ltm_context = ChatHistoryIndex(chat_config).search(
+                    conversation.user_id, dto.question
+                )
 
             # 2) Nạp lịch sử N lượt gần nhất vào session ADK (bỏ 2 message lượt này).
             history = load_history_contents(
@@ -157,34 +143,27 @@ class ChatService(BaseService):
             prompt = build_user_message(dto.question, ltm_context)
             new_message = types.Content(role="user", parts=[types.Part(text=prompt)])
             handler = ADKStreamHandler()
-            for event in get_runner().run(
-                user_id=user_id,
-                session_id=session.id,
-                new_message=new_message,
-                run_config=RunConfig(streaming_mode=StreamingMode.SSE),
-            ):
-                for out in handler.process(event):
-                    if out.kind == "citations":
-                        citations = out.citations
-                        # Lần đầu → gộp vào meta; lần sau → event citations riêng.
-                        if not meta_sent:
-                            yield _meta_event()
-                            meta_sent = True
-                        else:
-                            yield citations_event(citations)
-                    elif out.kind == "text":
-                        if not meta_sent:  # meta LUÔN đứng trước delta đầu tiên.
-                            yield _meta_event()
-                            meta_sent = True
-                        answer_parts.append(out.text)
-                        yield delta_event(out.text)
-                    elif out.kind == "thinking":
-                        if not meta_sent:
-                            yield _meta_event()
-                            meta_sent = True
-                        yield thinking_event(out.text)
-
+            chunks = (
+                out
+                for event in get_runner().run(
+                    user_id=user_id,
+                    session_id=session.id,
+                    new_message=new_message,
+                    run_config=RunConfig(streaming_mode=StreamingMode.SSE),
+                )
+                for out in handler.process(event)
+            )
+            # Điều phối thứ tự SSE nằm trong chat/sse.py (giữ trọn contract 1 chỗ);
+            # ở đây chỉ lấy citations cuối về để lưu message. `answer_parts` do ta sở
+            # hữu nên lỗi giữa chừng vẫn lưu được phần dở ở nhánh except.
+            citations = yield from emit_chat_events(
+                chunks,
+                conversation_id=conversation.id,
+                message_id=assistant_message.id,
+                answer_parts=answer_parts,
+            )
             answer = "".join(answer_parts).strip()
+
             if not answer:
                 # Agent không trả về text (vd chỉ gọi tool rồi dừng) → coi là lỗi.
                 raise RuntimeError("ADK agent không trả về câu trả lời")
@@ -234,7 +213,7 @@ class ChatService(BaseService):
         if not answer:
             return
         try:
-            from ..tasks import generate_conversation_title, index_chat_turn
+            from ...tasks import generate_conversation_title, index_chat_turn
 
             if conversation.title is None:
                 generate_conversation_title.delay(conversation.id, question, answer)
