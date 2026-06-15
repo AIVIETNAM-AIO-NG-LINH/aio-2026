@@ -23,6 +23,7 @@ import logging
 from collections.abc import Iterator
 
 from asgiref.sync import async_to_sync
+from django.db import transaction
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.sessions import BaseSessionService
 from google.genai import types
@@ -61,27 +62,38 @@ class ChatService(BaseService):
 
     # --- Chuẩn bị (đồng bộ, có thể raise lỗi nghiệp vụ) --------------------
     def prepare(self, dto: ChatDTO) -> tuple[ChatConversation, ChatMessage, ChatMessage]:
-        """Lấy/tạo hội thoại, chặn lượt trùng, lưu message user + placeholder bot."""
-        conversation = self._resolve_conversation(dto)
+        """Lấy/tạo hội thoại, chặn lượt trùng, lưu message user + placeholder bot.
 
-        # Chặn gửi tiếp khi lượt trước của hội thoại còn đang xử lý (tránh đua).
-        if self.messages.has_processing(conversation.id):
-            self.exception(
-                translate(
-                    "Hội thoại đang xử lý một câu hỏi khác, vui lòng đợi.",
-                    ChatbotCatalog.CONVERSATION_PROCESSING,
-                ),
-                http_status.HTTP_409_CONFLICT,
-            )
+        Toàn bộ chạy trong 1 transaction: với hội thoại có sẵn, hàng được KHOÁ
+        (`SELECT ... FOR UPDATE`) nên check `has_processing` + tạo 2 message là
+        atomic — hai request song song cùng hội thoại xếp hàng, không lọt 2 lượt
+        xử lý song song và không để lại message USER mồ côi khi lỗi giữa chừng.
+        """
+        with transaction.atomic():
+            conversation = self._resolve_conversation(dto)
 
-        user_message = self.messages.add_user_message(conversation, dto.question)
-        assistant_message = self.messages.add_assistant_placeholder(conversation)
+            # Chặn gửi tiếp khi lượt trước của hội thoại còn đang xử lý (tránh đua).
+            if self.messages.has_processing(conversation.id):
+                self.exception(
+                    translate(
+                        "Hội thoại đang xử lý một câu hỏi khác, vui lòng đợi.",
+                        ChatbotCatalog.CONVERSATION_PROCESSING,
+                    ),
+                    http_status.HTTP_409_CONFLICT,
+                )
+
+            user_message = self.messages.add_user_message(conversation, dto.question)
+            assistant_message = self.messages.add_assistant_placeholder(conversation)
         return conversation, user_message, assistant_message
 
     def _resolve_conversation(self, dto: ChatDTO) -> ChatConversation:
-        """conversation_id có → tải & kiểm tra quyền sở hữu; không → tạo mới."""
+        """conversation_id có → tải (khoá hàng) & kiểm tra quyền sở hữu; không → tạo mới.
+
+        Gọi BÊN TRONG `transaction.atomic()` của `prepare` để `select_for_update`
+        có hiệu lực.
+        """
         if dto.conversation_id is not None:
-            conversation = self.conversations.find_owned(
+            conversation = self.conversations.find_owned_locked(
                 dto.conversation_id, dto.user_id
             )
             if conversation is None:

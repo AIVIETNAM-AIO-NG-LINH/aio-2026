@@ -22,6 +22,13 @@ class ChatConversationRepositoryInterface(ABC):
         ...
 
     @abstractmethod
+    def find_owned_locked(
+        self, conversation_id: int, user_id: int
+    ) -> ChatConversation | None:
+        """Như `find_owned` nhưng khoá hàng (`SELECT ... FOR UPDATE`); gọi trong transaction."""
+        ...
+
+    @abstractmethod
     def create_open(self, user_id: int) -> ChatConversation:
         """Tạo hội thoại mới trạng thái OPEN cho user."""
         ...

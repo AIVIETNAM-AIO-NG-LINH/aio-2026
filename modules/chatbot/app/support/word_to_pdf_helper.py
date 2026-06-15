@@ -51,10 +51,16 @@ def word_to_pdf(file_bytes: bytes, mime_type: str | None) -> bytes:
         # `--convert-to pdf` sinh <basename>.pdf trong outdir. Dùng HOME riêng để
         # LibreOffice tự tạo profile trong tmp (tránh đụng HOME của user 'app').
         env = {**os.environ, "HOME": tmp_dir}
+        # Profile cách ly TUYỆT ĐỐI cho mỗi lần convert: nếu chỉ override HOME,
+        # nhiều worker convert song song vẫn có thể tranh single-instance lock của
+        # soffice và treo tới hết timeout. `-env:UserInstallation` ép mỗi tiến
+        # trình một profile riêng trong tmp → chạy song song an toàn.
+        profile_url = "file://" + os.path.join(tmp_dir, "lo_profile")
         try:
             proc = subprocess.run(
                 [
                     _SOFFICE_BIN,
+                    f"-env:UserInstallation={profile_url}",
                     "--headless",
                     "--convert-to",
                     "pdf",

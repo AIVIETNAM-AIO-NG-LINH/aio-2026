@@ -24,6 +24,22 @@ class ChatConversationRepository(
         """Hội thoại theo id VÀ thuộc user — None nếu không tồn tại/không phải của user."""
         return self.query().filter(id=conversation_id, user_id=user_id).first()
 
+    def find_owned_locked(
+        self, conversation_id: int, user_id: int
+    ) -> ChatConversation | None:
+        """Như `find_owned` nhưng KHOÁ hàng (`SELECT ... FOR UPDATE`).
+
+        Dùng để serialize các lượt chat đồng thời cùng hội thoại: hai request song
+        song sẽ xếp hàng ở đây nên check `has_processing` + tạo placeholder trở
+        thành atomic. BẮT BUỘC gọi trong `transaction.atomic()`.
+        """
+        return (
+            self.query()
+            .select_for_update()
+            .filter(id=conversation_id, user_id=user_id)
+            .first()
+        )
+
     def create_open(self, user_id: int) -> ChatConversation:
         """Tạo hội thoại mới trạng thái OPEN cho user."""
         return self.create({"user_id": user_id, "status": ConversationStatus.OPEN})

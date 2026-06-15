@@ -26,9 +26,6 @@ class ChatbotCatalog(LangCatalog):
     QUESTION_BLANK = _NS + ".QUESTION_BLANK"
     CONVERSATION_ID_INVALID = _NS + ".CONVERSATION_ID_INVALID"
     CONVERSATION_ID_MIN = _NS + ".CONVERSATION_ID_MIN"
-    TOP_K_INVALID = _NS + ".TOP_K_INVALID"
-    TOP_K_MIN = _NS + ".TOP_K_MIN"
-    TOP_K_MAX = _NS + ".TOP_K_MAX"
 
     # Validate ingest nội bộ (IngestDocumentRequest)
     DOCUMENT_ID_REQUIRED = _NS + ".DOCUMENT_ID_REQUIRED"

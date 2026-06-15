@@ -1,6 +1,6 @@
 """Request validate cho endpoint chat.
 
-Body: `{ "question": <str>, "conversation_id"?: <int>, "top_k"?: <int> }`.
+Body: `{ "question": <str>, "conversation_id"?: <int> }`.
 `user_id` KHÔNG nằm trong body — view lấy từ header `X-Auth-User-Id` (nginx set
 sau khi verify token ở api-aio) rồi nhồi vào DTO. `conversation_id` vắng → tạo
 hội thoại mới.
@@ -26,11 +26,10 @@ class ChatDTO:
     user_id: int
     question: str
     conversation_id: Optional[int]
-    top_k: Optional[int]
 
 
 class ChatRequest(BaseFormRequest):
-    """Validate payload `{ question, conversation_id?, top_k? }`."""
+    """Validate payload `{ question, conversation_id? }`."""
 
     # error_messages bọc `translate_lazy` (KHÔNG phải translate): class-attribute
     # evaluate lúc import, lazy mới resolve ngôn ngữ per-request lúc render lỗi.
@@ -58,18 +57,6 @@ class ChatRequest(BaseFormRequest):
             ),
         },
     )
-    top_k = serializers.IntegerField(
-        required=False,
-        min_value=1,
-        max_value=50,
-        error_messages={
-            "invalid": translate_lazy(
-                "top_k phải là số nguyên", ChatbotCatalog.TOP_K_INVALID
-            ),
-            "min_value": translate_lazy("top_k phải lớn hơn 0", ChatbotCatalog.TOP_K_MIN),
-            "max_value": translate_lazy("top_k tối đa 50", ChatbotCatalog.TOP_K_MAX),
-        },
-    )
 
     def to_dto(self, user_id: int) -> ChatDTO:
         """`validated_data` + `user_id` (từ header) → DTO. Gọi SAU `is_valid()`."""
@@ -78,5 +65,4 @@ class ChatRequest(BaseFormRequest):
             user_id=user_id,
             question=data["question"],
             conversation_id=data.get("conversation_id"),
-            top_k=data.get("top_k"),
         )
