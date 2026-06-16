@@ -19,7 +19,7 @@ services:
     volumes:
       # Mount source for live reload during development.
       - ..:/app
-    # Không publish ra host — truy cập qua nginx-aio (http://ai.localhost).
+    # Không publish ra host — truy cập qua nginx-aio (http://ai.localhost:8000).
     networks:
       aio-net:             # shared network — nginx-aio gọi tới qua alias `ai-aio`
         aliases:

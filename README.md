@@ -2,7 +2,7 @@
 
 Backend AI cho hệ AIO: **Django 5.2 (LTS)** + **Django REST Framework** (API JSON thuần — không admin / không giao diện HTML), chạy trong **Docker**. Cung cấp một **chatbot RAG**: ingest tài liệu (PDF/Word) thành kho tri thức và trả lời hỏi-đáp dạng **SSE streaming** qua **Google ADK** (Agent + tool RAG).
 
-ai-aio chạy *cạnh* api-aio trong stack `nginx-aio`: dùng chung **MariaDB** (DB `api_ai`), **Redis** (broker Celery) và mạng docker `aio-net`. Truy cập từ ngoài qua reverse-proxy nginx (`http://ai.localhost`), không publish cổng ra host.
+ai-aio chạy *cạnh* api-aio trong stack `nginx-aio`: dùng chung **MariaDB** (DB `api_ai`), **Redis** (broker Celery) và mạng docker `aio-net`. Truy cập từ ngoài qua reverse-proxy nginx (`http://ai.localhost:8000`), không publish cổng ra host.
 
 ## Stack
 
@@ -108,7 +108,7 @@ docker compose -f docker/docker-compose.yml up --build
 
 Mẹo: `export COMPOSE_FILE=docker/docker-compose.yml` để khỏi gõ `-f` mỗi lần.
 
-Health check (qua proxy): <http://ai.localhost/api/health/> → trả về:
+Health check (qua proxy): <http://ai.localhost:8000/api/health/> → trả về:
 
 ```json
 {"status": "ok", "database": "up"}
