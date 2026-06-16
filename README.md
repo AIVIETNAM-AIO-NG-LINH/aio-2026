@@ -2,7 +2,7 @@
 
 Backend AI cho hệ AIO: **Django 5.2 (LTS)** + **Django REST Framework** (API JSON thuần — không admin / không giao diện HTML), chạy trong **Docker**. Cung cấp một **chatbot RAG**: ingest tài liệu (PDF/Word) thành kho tri thức và trả lời hỏi-đáp dạng **SSE streaming** qua **Google ADK** (Agent + tool RAG).
 
-ai-aio chạy *cạnh* api-aio trong stack `nginx-aio`: dùng chung **MariaDB** (DB `api_ai`), **Redis** (broker Celery) và mạng docker `aio-net`. Truy cập từ ngoài qua reverse-proxy nginx (`http://ai.localhost`), không publish cổng ra host.
+ai-aio chạy *cạnh* api-aio trong stack `nginx-aio`: dùng chung **MariaDB** (DB `api_ai`), **Redis** (broker Celery) và mạng docker `aio-net`. Truy cập từ ngoài qua reverse-proxy nginx (`http://ai.localhost:8000`), không publish cổng ra host.
 
 ## Stack
 
@@ -108,7 +108,7 @@ docker compose -f docker/docker-compose.yml up --build
 
 Mẹo: `export COMPOSE_FILE=docker/docker-compose.yml` để khỏi gõ `-f` mỗi lần.
 
-Health check (qua proxy): <http://ai.localhost/api/health/> → trả về:
+Health check (qua proxy): <http://ai.localhost:8000/api/health/> → trả về:
 
 ```json
 {"status": "ok", "database": "up"}
@@ -137,24 +137,24 @@ docker compose -f docker/docker-compose.yml --profile lightrag up -d
 | Method | URL | Mô tả |
 |--------|-----|-------|
 | GET | `/api/health/` | Health check (app + kết nối DB) |
-| POST | `/api/chatbot/chat` | Hỏi-đáp RAG — trả lời **SSE** (`meta → delta* → done\|error`). Body: `{question, conversation_id?, top_k?}` |
-| GET | `/api/chatbot/conversations` | Danh sách hội thoại của user (phân trang) |
-| GET | `/api/chatbot/conversations/{id}/messages` | Tin nhắn của 1 hội thoại (phân trang) |
-| POST | `/api/internal/chatbot/documents/ingest` | **Nội bộ** — nhận `{document_id}`, enqueue ingest → `202` |
+| POST | `/api/v1/chatbot/chat` | Hỏi-đáp RAG — trả lời **SSE** (`meta → delta* → done\|error`). Body: `{question, conversation_id?, top_k?}` |
+| GET | `/api/v1/chatbot/conversations` | Danh sách hội thoại của user (phân trang) |
+| GET | `/api/v1/chatbot/conversations/{id}/messages` | Tin nhắn của 1 hội thoại (phân trang) |
+| POST | `/api/internal/v1/chatbot/documents/ingest` | **Nội bộ** — nhận `{document_id}`, enqueue ingest → `202` |
 | GET · POST | `/api/examples/` | Module mẫu — list / create |
 | GET · PUT · PATCH · DELETE | `/api/examples/{id}/` | Module mẫu — chi tiết / sửa / xoá |
 
 **Xác thực:**
 
-- Nhóm `/api/chatbot/*` (công khai): nginx verify token user (qua api-aio) rồi forward header `X-Auth-User-Id`. Gate `ensure_authenticated` chặn 401 nếu thiếu, có thì populate `CurrentUser`.
-- Nhóm `/api/internal/*` (service-to-service): middleware `VerifyInternalToken` chốt header `X-Internal-Token` ở prefix (sai → 403). Không gắn user.
+- Nhóm `/api/v1/chatbot/*` (công khai): nginx verify token user (qua api-aio) rồi forward header `X-Auth-User-Id`. Gate `ensure_authenticated` chặn 401 nếu thiếu, có thì populate `CurrentUser`.
+- Nhóm `/api/internal/v1/*` (service-to-service): middleware `VerifyInternalToken` chốt header `X-Internal-Token` ở prefix (sai → 403). Không gắn user.
 
 ## Luồng chính
 
-**Ingest tài liệu** (`/api/internal/chatbot/documents/ingest` → Celery `chatbot.ingest_document`):
+**Ingest tài liệu** (`/api/internal/v1/chatbot/documents/ingest` → Celery `chatbot.ingest_document`):
 file gốc tải từ S3 → trích text theo trang (pypdf + Gemini OCR cho trang scan/ảnh) → chunk theo trang (kèm contextual header) → embed (Gemini) → index parent-child vào OpenSearch. Phụ (fail-safe, không chặn READY): index summary + LightRAG/KG. Status `chatbot_documents.status`: `PENDING → READY | FAILED`.
 
-**Chat** (`/api/chatbot/chat`, SSE qua Google ADK):
+**Chat** (`/api/v1/chatbot/chat`, SSE qua Google ADK):
 `prepare` (đồng bộ) tạo/lấy conversation, chặn lượt đang xử lý (409), lưu message user + placeholder bot → `stream` nạp LTM (hội thoại cũ liên quan) + lịch sử N lượt vào session ADK → Runner chạy agent, agent tự gọi tool `search_knowledge_base` (hybrid BM25 + kNN, RRF, rewrite + rerank) → stream câu trả lời. Sau lượt: Celery sinh tiêu đề hội thoại + lưu LTM (nền, fail-safe).
 
 ## Lệnh thường dùng

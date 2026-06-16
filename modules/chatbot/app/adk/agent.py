@@ -9,6 +9,8 @@ from __future__ import annotations
 import functools
 
 from google.adk.agents import Agent
+from google.adk.planners import BuiltInPlanner
+from google.genai import types
 
 from ..chat_pipeline.config import ChatConfig
 from .constants import ROOT_AGENT_NAME
@@ -54,6 +56,15 @@ AGENT_INSTRUCTION = (
 )
 
 
+# Bật suy luận (chain-of-thought) MẶC ĐỊNH: `include_thoughts=True` để Gemini phát
+# các part `thought` ra stream → handler bóc thành chunk "thinking" → SSE event
+# `thinking` cho FE (xem stream_handler.py + chat_pipeline/sse.py). `thinking_budget`
+# để mặc định (dynamic: model tự cân) — chỉ model dòng 2.5+ mới hỗ trợ thoughts.
+_THINKING_PLANNER = BuiltInPlanner(
+    thinking_config=types.ThinkingConfig(include_thoughts=True)
+)
+
+
 @functools.lru_cache(maxsize=1)
 def create_root_agent() -> Agent:
     """Tạo (và cache) agent gốc có tool RAG. Model đọc từ env tại lần tạo đầu."""
@@ -62,5 +73,6 @@ def create_root_agent() -> Agent:
         name=ROOT_AGENT_NAME,
         model=chat_config.chat_model,
         instruction=AGENT_INSTRUCTION,
+        planner=_THINKING_PLANNER,
         tools=[search_knowledge_base, search_knowledge_graph],
     )

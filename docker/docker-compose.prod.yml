@@ -16,7 +16,7 @@ services:
     environment:
       DB_HOST: db          # alias MariaDB dùng chung (ở nginx-aio)
       DJANGO_DEBUG: "False"
-    # Không publish ra host — truy cập qua nginx-aio (http://ai.localhost).
+    # Không publish ra host — truy cập qua nginx-aio (http://ai.localhost:8000).
     networks:
       aio-net:             # shared network — nginx-aio gọi tới qua alias `ai-aio`
         aliases:

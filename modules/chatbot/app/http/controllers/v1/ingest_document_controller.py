@@ -1,4 +1,4 @@
-"""Controller ingest tài liệu (NỘI BỘ — `/api/internal/chatbot/documents/ingest`)."""
+"""Controller ingest tài liệu (NỘI BỘ — `/api/internal/v1/chatbot/documents/ingest`)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from ....services import IngestDocumentService
 
 
 class IngestDocumentController(APIView):
-    """POST documents/ingest — nhận `{document_id}`, validate rồi enqueue ingest."""
+    """POST `/api/internal/v1/chatbot/documents/ingest` — nhận `{document_id}`, validate rồi enqueue ingest."""
 
     def post(self, request: Request, *args, **kwargs) -> Response:
         form = IngestDocumentRequest(data=request.data)
