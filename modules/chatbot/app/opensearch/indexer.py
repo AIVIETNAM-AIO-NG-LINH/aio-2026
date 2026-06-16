@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any
+from typing import Any, Callable
 
 from opensearchpy import helpers
 
@@ -28,6 +28,11 @@ logger = logging.getLogger(__name__)
 JOIN_FIELD = "doc_join"
 PARENT_RELATION = "document"
 CHILD_RELATION = "chunk"
+
+#: Số child mỗi lần bulk — chia nhỏ để phát tiến độ (on_progress) sau mỗi batch
+#: thay vì đẩy một cục. Chỉ batch CUỐI dùng refresh="wait_for" (refresh làm hiện
+#: mọi batch ghi trước đó) nên các batch giữa rẻ (refresh=False).
+_CHILD_BATCH_SIZE = 100
 
 
 class OpenSearchIndexer(BaseOpenSearchClient):
@@ -82,6 +87,7 @@ class OpenSearchIndexer(BaseOpenSearchClient):
         self,
         parent_meta: dict[str, Any],
         children: list[tuple[str, list[float], int | None]],
+        on_progress: Callable[[int], None] | None = None,
     ) -> int:
         """Ghi 1 tài liệu (idempotent): index parent + bulk children MỚI → xoá bản cũ.
 
@@ -89,6 +95,11 @@ class OpenSearchIndexer(BaseOpenSearchClient):
         (+ page_count nếu có). Mỗi child là (chunk_text, chunk_vector, page) với
         `page` là số trang nguồn (từ 1, có thể None nếu không xác định được).
         Trả về số child đã index.
+
+        `on_progress` (nếu có) được gọi sau MỖI batch child với % trang phân biệt
+        đã index (0–100, không giảm vì trang tích lũy dần) — để caller đẩy tiến độ
+        ra FE mượt thay vì nhảy một cục. Cần `page_count` trong `parent_meta` mới
+        tính được %, thiếu thì không phát.
 
         Ghi-mới-trước-xoá-sau để re-ingest không có khoảng trống trên search
         (xem docstring module). Routing của mọi doc = parent_id (retriever lấy
@@ -112,41 +123,56 @@ class OpenSearchIndexer(BaseOpenSearchClient):
             ),
         )
 
-        # Bulk index children: routing = parent id để cùng shard với parent.
-        actions = [
-            {
-                "_op_type": "index",
-                "_index": index,
-                "_id": f"{parent_id}:{i}",
-                "routing": parent_id,
-                "_source": {
-                    "chunk_text": chunk_text,
-                    "chunk_vector": chunk_vector,
-                    "page": page,
-                    JOIN_FIELD: {"name": CHILD_RELATION, "parent": parent_id},
-                },
-            }
-            for i, (chunk_text, chunk_vector, page) in enumerate(children)
-        ]
-        if actions:
-            # wait_for: đợi bản mới search thấy được TRƯỚC khi xoá bản cũ bên
-            # dưới (không có khoảng trống) và trước khi tài liệu được đánh READY.
-            # max_retries: helpers.bulk tự retry các ITEM bị 429 (queue đầy);
-            # _retry_transient lo lỗi cấp request (mạng/timeout) — hai tầng
-            # khác nhau, không retry kép trên cùng một lỗi.
+        total = len(children)
+        total_pages = parent_meta.get("page_count") or 0
+        indexed_pages: set[int] = set()
+
+        # Bulk index children theo BATCH: routing = parent id để cùng shard với
+        # parent. Chia batch để phát tiến độ dần; chỉ batch cuối refresh="wait_for".
+        for start in range(0, total, _CHILD_BATCH_SIZE):
+            batch = children[start : start + _CHILD_BATCH_SIZE]
+            is_last = start + _CHILD_BATCH_SIZE >= total
+            actions = [
+                {
+                    "_op_type": "index",
+                    "_index": index,
+                    "_id": f"{parent_id}:{start + offset}",
+                    "routing": parent_id,
+                    "_source": {
+                        "chunk_text": chunk_text,
+                        "chunk_vector": chunk_vector,
+                        "page": page,
+                        JOIN_FIELD: {"name": CHILD_RELATION, "parent": parent_id},
+                    },
+                }
+                for offset, (chunk_text, chunk_vector, page) in enumerate(batch)
+            ]
+            # wait_for ở batch CUỐI: refresh làm hiện MỌI batch đã ghi trước đó →
+            # đủ đảm bảo bản mới search thấy được TRƯỚC khi xoá bản cũ (không có
+            # khoảng trống) và trước khi tài liệu được đánh READY. Batch giữa
+            # refresh=False cho rẻ. max_retries: helpers.bulk tự retry ITEM bị 429
+            # (queue đầy); _retry_transient lo lỗi cấp request (mạng/timeout) —
+            # hai tầng khác nhau, không retry kép trên cùng một lỗi.
             self._retry_transient(
                 "bulk index children",
-                lambda: helpers.bulk(
-                    self._client, actions, refresh="wait_for", max_retries=3
+                lambda a=actions, last=is_last: helpers.bulk(
+                    self._client,
+                    a,
+                    refresh=("wait_for" if last else False),
+                    max_retries=3,
                 ),
             )
+
+            if on_progress is not None and total_pages > 0:
+                indexed_pages.update(page for _, _, page in batch if page is not None)
+                on_progress(round(len(indexed_pages) / total_pages * 100))
 
         self._delete_stale(document_id, parent_id)
 
         logger.info(
-            "[opensearch] document_id=%s đã index %d child", document_id, len(actions)
+            "[opensearch] document_id=%s đã index %d child", document_id, total
         )
-        return len(actions)
+        return total
 
     def _delete_stale(self, document_id: int, keep_parent_id: str) -> None:
         """Xoá mọi parent + child của document_id TRỪ version vừa ghi.

@@ -30,3 +30,17 @@ class ChatbotDocumentRepositoryInterface(ABC):
     def set_status(self, document_id: int, status: str) -> bool:
         """Ghi cột `status` (value của `DocumentStatus`); False nếu bản ghi không tồn tại."""
         ...
+
+    @abstractmethod
+    def update_progress(
+        self,
+        document_id: int,
+        status: str | None = None,
+        percent: int | None = None,
+    ) -> ChatbotDocument | None:
+        """Ghi gộp `status` và/hoặc `indexed_percent`, trả bản ghi MỚI (None nếu không tồn tại).
+
+        Chỉ ghi field được truyền (khác None). Trả lại bản ghi sau cập nhật để
+        caller phát hook với trạng thái đầy đủ (status + percent hiện tại).
+        """
+        ...

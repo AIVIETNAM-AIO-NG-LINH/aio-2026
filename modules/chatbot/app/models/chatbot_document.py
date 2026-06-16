@@ -22,6 +22,7 @@ class ChatbotDocument(SoftDeleteModel):
 
     COL_MEDIA_ID = "media_id"
     COL_STATUS = "status"
+    COL_INDEXED_PERCENT = "indexed_percent"
 
     media = models.ForeignKey(
         Media,
@@ -36,6 +37,12 @@ class ChatbotDocument(SoftDeleteModel):
     media_id: int | None
 
     status = models.CharField(max_length=20, choices=DocumentStatus.choices)
+
+    # Phần trăm đã index (0–100). Với PDF tính theo % số trang đã index. Reset 0
+    # khi vào INDEXING, lên 100 khi index xong toàn bộ trang.
+    indexed_percent = models.PositiveSmallIntegerField(
+        db_column="indexed_percent", default=0
+    )
 
     class Meta(SoftDeleteModel.Meta):
         db_table = "chatbot_documents"

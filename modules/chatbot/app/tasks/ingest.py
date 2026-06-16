@@ -27,8 +27,7 @@ def ingest_document(document_id: int) -> None:
     worker retry vô hạn ở Phase 1 (chưa cấu hình retry).
     """
     from ..enums import DocumentStatus
-    from ..pipelines.ingest import run_ingest_pipeline
-    from ..repositories import ChatbotDocumentRepository
+    from ..pipelines.ingest import _emit_progress, run_ingest_pipeline
 
     logger.info("[ingest_document] nhận document_id=%s", document_id)
     try:
@@ -39,7 +38,8 @@ def ingest_document(document_id: int) -> None:
             document_id,
         )
         try:
-            ChatbotDocumentRepository().set_status(document_id, DocumentStatus.FAILED)
+            # Qua _emit_progress để hook push tiến độ vẫn bắn ở nhánh FAILED cuối cùng.
+            _emit_progress(document_id, status=DocumentStatus.FAILED)
         except Exception:
             logger.exception(
                 "[ingest_document] document_id=%s không set được FAILED", document_id

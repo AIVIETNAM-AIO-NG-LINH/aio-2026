@@ -5,6 +5,7 @@ Import gọn: `from modules.chatbot.app.transformers import ConversationTransfor
 """
 
 from .conversation_transformer import ConversationTransformer
+from .document_transformer import DocumentTransformer
 from .message_transformer import MessageTransformer
 
-__all__ = ["ConversationTransformer", "MessageTransformer"]
+__all__ = ["ConversationTransformer", "DocumentTransformer", "MessageTransformer"]

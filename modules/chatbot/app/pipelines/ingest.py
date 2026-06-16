@@ -18,6 +18,7 @@ an toàn cuối: log traceback + FAILED) — bug lộ nguyên hình, không bị
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from botocore.exceptions import BotoCoreError, ClientError
 from google.genai import errors as genai_errors
@@ -32,6 +33,9 @@ from ..opensearch import OpenSearchIndexer, SummaryIndexer
 from ..support.extract_helper import extract_pages, pages_to_text
 from ..support.page_chunker import PageChunk, chunk_pages
 
+if TYPE_CHECKING:
+    from ..models import ChatbotDocument
+
 logger = logging.getLogger(__name__)
 
 #: Kiểu lỗi của dịch vụ ngoài (S3/Gemini/OpenSearch) — pipeline CHỈ bắt những kiểu
@@ -40,15 +44,56 @@ logger = logging.getLogger(__name__)
 _EXTERNAL_ERRORS = (BotoCoreError, ClientError, genai_errors.APIError, OpenSearchException)
 
 
-def _set_status(document_id: int, status: str) -> None:
-    """Ghi `chatbot_documents.status` qua repository (bảng dùng chung, managed=False).
+def _push_progress(document: ChatbotDocument) -> None:
+    """HOOK: gọi mỗi lần status/percent của tài liệu đổi — đẩy tiến độ ra FE.
 
-    `status` là value của `DocumentStatus` (TextChoices = str), truyền từ caller.
+    Transform bản ghi qua `DocumentTransformer` rồi broadcast xuống Redis
+    (`aio:broadcast`) cho node-aio đẩy tới TOÀN BỘ user đang connect WebSocket.
+    Nhận thẳng bản ghi `ChatbotDocument` sau cập nhật (đã có `id`, `status`,
+    `indexed_percent`, `media`…). KHÔNG raise — caller đã bọc try/except, và
+    `RealtimeClient.publish` cũng tự nuốt lỗi → push hỏng không làm hỏng pipeline.
+    """
+    from modules.base.clients.realtime_client import realtime_client
+
+    from ..enums import RealtimeEvent
+    from ..transformers import DocumentTransformer
+
+    data = DocumentTransformer().transform(document)
+    realtime_client().broadcast(RealtimeEvent.DOCUMENT_PROGRESS.value, data)
+
+
+def _emit_progress(
+    document_id: int,
+    *,
+    status: str | None = None,
+    percent: int | None = None,
+) -> None:
+    """Ghi status và/hoặc percent qua repository RỒI phát hook `_push_progress`.
+
+    Chỉ ghi field được truyền. Sau khi ghi, đọc lại bản ghi để hook luôn nhận cả
+    status + percent hiện tại (kể cả khi chỉ một cái đổi). Lỗi hook bị nuốt (log)
+    để không ảnh hưởng tiến độ ingest.
     """
     from modules.chatbot.app.repositories import ChatbotDocumentRepository  # lazy: cần Django app registry
 
-    if not ChatbotDocumentRepository().set_status(document_id, status):
-        logger.warning("[pipeline] document_id=%s không tồn tại khi set %s", document_id, status)
+    row = ChatbotDocumentRepository().update_progress(
+        document_id, status=status, percent=percent
+    )
+    if row is None:
+        logger.warning(
+            "[pipeline] document_id=%s không tồn tại khi set status=%s percent=%s",
+            document_id,
+            status,
+            percent,
+        )
+        return
+
+    try:
+        _push_progress(row)
+    except Exception:
+        logger.exception(
+            "[pipeline] document_id=%s lỗi push tiến độ (bỏ qua)", document_id
+        )
 
 
 def _index_summary_safe(document_id: int, media_id: int, text: str) -> None:
@@ -106,13 +151,13 @@ def run_ingest_pipeline(document_id: int) -> None:
         return
 
     # Đánh dấu đang xử lý ngay khi nhận tài liệu hợp lệ.
-    _set_status(document_id, DocumentStatus.PENDING)
+    _emit_progress(document_id, status=DocumentStatus.PENDING)
 
     media = document.media
     # Không có media (media_id null hoặc bản ghi mồ côi) → không thể đọc file → FAILED.
     if media is None:
         logger.warning("[pipeline] document_id=%s thiếu media -> FAILED", document_id)
-        _set_status(document_id, DocumentStatus.FAILED)
+        _emit_progress(document_id, status=DocumentStatus.FAILED)
         return
 
     kind = media.document_kind
@@ -125,7 +170,7 @@ def run_ingest_pipeline(document_id: int) -> None:
             media.mime_type,
             media.file_type,
         )
-        _set_status(document_id, DocumentStatus.FAILED)
+        _emit_progress(document_id, status=DocumentStatus.FAILED)
         return
 
     # S3/Gemini/OpenSearch do client ở base tự quản; config chunk + header
@@ -136,6 +181,9 @@ def run_ingest_pipeline(document_id: int) -> None:
     # của bên thứ 3 (`_EXTERNAL_ERRORS`) — lỗi code nội bộ (chunk, gắn trang…)
     # không khớp kiểu nên propagate lên vỏ task, lộ nguyên traceback.
     try:
+        # Đánh dấu bắt đầu index data (parse/chunk/embed/đẩy OpenSearch); reset %.
+        _emit_progress(document_id, status=DocumentStatus.INDEXING, percent=0)
+
         # 1) Tải file gốc từ S3 (S3Client ở base tự đọc env AWS_S3_*).
         file_bytes = S3Client().read_bytes(media.file_name)
 
@@ -144,7 +192,7 @@ def run_ingest_pipeline(document_id: int) -> None:
         text = pages_to_text(pages)  # full-text cho summary/LightRAG
         if not text.strip():
             logger.warning("[pipeline] document_id=%s trích ra text rỗng -> FAILED", document_id)
-            _set_status(document_id, DocumentStatus.FAILED)
+            _emit_progress(document_id, status=DocumentStatus.FAILED)
             return
 
         # 3) Chunk THEO TRANG (mỗi chunk mang số trang + contextual header) +
@@ -158,7 +206,7 @@ def run_ingest_pipeline(document_id: int) -> None:
             logger.warning(
                 "[pipeline] document_id=%s không có chunk embed hợp lệ -> FAILED", document_id
             )
-            _set_status(document_id, DocumentStatus.FAILED)
+            _emit_progress(document_id, status=DocumentStatus.FAILED)
             return
 
         # Gắn lại số trang cho từng vector trước khi index.
@@ -173,17 +221,24 @@ def run_ingest_pipeline(document_id: int) -> None:
             "file_type": media.file_type,
             "page_count": len(pages),
         }
-        indexed = indexer.index_document(parent_meta, children)
+        # on_progress phát % trang đã index sau MỖI batch child → mỗi lần % đổi là
+        # một lần _emit_progress → _push_progress đẩy tiến độ ra FE (mượt, không
+        # nhảy một cục). Batch cuối phát đúng % cuối cùng nên không cần emit lại.
+        indexed = indexer.index_document(
+            parent_meta,
+            children,
+            on_progress=lambda percent: _emit_progress(document_id, percent=percent),
+        )
     except UnsupportedDocumentError as exc:
         logger.warning("[pipeline] document_id=%s không hỗ trợ: %s -> FAILED", document_id, exc)
-        _set_status(document_id, DocumentStatus.FAILED)
+        _emit_progress(document_id, status=DocumentStatus.FAILED)
         return
     except _EXTERNAL_ERRORS:
         logger.exception(
             "[pipeline] document_id=%s lỗi dịch vụ ngoài (S3/Gemini/OpenSearch) -> FAILED",
             document_id,
         )
-        _set_status(document_id, DocumentStatus.FAILED)
+        _emit_progress(document_id, status=DocumentStatus.FAILED)
         return
 
     # 6) Phần phụ Phase 2 — fail-safe: lỗi KHÔNG đổi status sang FAILED, chỉ log.
@@ -192,7 +247,7 @@ def run_ingest_pipeline(document_id: int) -> None:
     _index_lightrag_safe(document_id, text)
 
     # 7) Thành công (phần chính đã index xong → READY bất kể summary/KG).
-    _set_status(document_id, DocumentStatus.READY)
+    _emit_progress(document_id, status=DocumentStatus.READY)
     logger.info(
         "[pipeline] document_id=%s READY (%d chunk đã index)", document_id, indexed
     )
