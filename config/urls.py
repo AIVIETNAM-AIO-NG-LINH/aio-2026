@@ -9,7 +9,7 @@ urlpatterns = [
     path("api/", include("modules.core.urls")),       # /api/health/
     path("api/", include("modules.example.urls")),    # /api/examples/
     # Chatbot công khai (luồng chat user) — nginx verify token, forward X-Auth-User-Id.
-    path("api/chatbot/", include("modules.chatbot.routes.v1.public")),  # chat / conversations
+    path("api/v1/chatbot/", include("modules.chatbot.routes.v1.public")),  # chat / conversations
     # Nội bộ (service-to-service) — đã được VerifyInternalToken gate ở prefix.
-    path("api/internal/chatbot/", include("modules.chatbot.routes.v1.internal")),  # .../documents/ingest
+    path("api/internal/v1/chatbot/", include("modules.chatbot.routes.v1.internal")),  # .../documents/ingest
 ]

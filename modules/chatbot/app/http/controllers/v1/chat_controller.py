@@ -1,4 +1,4 @@
-"""Controller CÔNG KHAI của luồng chat (`/api/chatbot/...`): chat SSE + hội thoại/tin nhắn.
+"""Controller CÔNG KHAI của luồng chat (`/api/v1/chatbot/...`): chat SSE + hội thoại/tin nhắn.
 
 Gộp 1 ViewSet nhiều action (kiểu controller Laravel) — urls/public.py map
 từng path vào từng action qua ``ChatController.as_view({"post": "chat"})`` v.v.
@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from django.http import StreamingHttpResponse
 from rest_framework.negotiation import BaseContentNegotiation
+from rest_framework.parsers import BaseParser
+from rest_framework.renderers import BaseRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
@@ -34,10 +36,12 @@ class _IgnoreClientNegotiation(BaseContentNegotiation):
     renderer đầu cũng là lựa chọn đúng — áp cho cả class vô hại.
     """
 
-    def select_parser(self, request, parsers):
+    def select_parser(self, request: Request, parsers: list[BaseParser]) -> BaseParser:
         return parsers[0]
 
-    def select_renderer(self, request, renderers, format_suffix=None):
+    def select_renderer(
+        self, request: Request, renderers: list[BaseRenderer], format_suffix: str | None = None
+    ) -> tuple[BaseRenderer, str]:
         return (renderers[0], renderers[0].media_type)
 
 
@@ -51,7 +55,7 @@ class ChatController(ViewSet):
     content_negotiation_class = _IgnoreClientNegotiation
 
     def chat(self, request: Request) -> StreamingHttpResponse:
-        """POST chat — hỏi đáp RAG, trả câu trả lời dạng SSE streaming.
+        """POST `/api/v1/chatbot/chat` — hỏi đáp RAG, trả câu trả lời dạng SSE streaming.
 
         Body: `{ question, conversation_id?, top_k? }`. Chạy qua Google ADK
         (agent + tool RAG). Trả `text/event-stream`:
@@ -75,13 +79,13 @@ class ChatController(ViewSet):
         return response
 
     def conversations(self, request: Request) -> Response:
-        """GET conversations — danh sách hội thoại của user (phân trang)."""
+        """GET `/api/v1/chatbot/conversations` — danh sách hội thoại của user (phân trang)."""
         user_id = CurrentUser().get_id()
         page, limit = parse_pagination(request)
         return chat_service.list_conversations(user_id, page, limit)
 
     def messages(self, request: Request, conversation_id: int) -> Response:
-        """GET conversations/<id>/messages — tin nhắn của 1 hội thoại (phân trang)."""
+        """GET `/api/v1/chatbot/conversations/<id>/messages` — tin nhắn của 1 hội thoại (phân trang)."""
         user_id = CurrentUser().get_id()
         page, limit = parse_pagination(request)
         return chat_service.list_messages(user_id, conversation_id, page, limit)
