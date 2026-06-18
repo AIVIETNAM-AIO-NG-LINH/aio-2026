@@ -19,15 +19,19 @@ def _env(name: str, default: str = "") -> str:
 
 class OllamaClient:
     def __init__(self) -> None:
-        self.api_base = _env("OLLAMA_API_BASE", default="http://ollama:11434").rstrip("/")
-        self.embedding_model = _env("OLLAMA_EMBEDDING_MODEL", default="nomic-embed-text")
+        self.api_base = _env("OLLAMA_API_BASE", default="http://ollama:11434").rstrip(
+            "/"
+        )
+        self.embedding_model = _env(
+            "OLLAMA_EMBEDDING_MODEL", default="nomic-embed-text"
+        )
 
     def embed(self, texts: list[str], dims: int, task_type: str) -> list[list[float]]:
         # task_type bị bỏ qua (Ollama embedding đối xứng). `dims` để caller kiểm tra.
         resp = requests.post(
             f"{self.api_base}/api/embed",
-            json = {"model": self.embedding_model, "input": texts},
-            timeout = 60,
+            json={"model": self.embedding_model, "input": texts},
+            timeout=60,
         )
         resp.raise_for_status()
         return [list(v) for v in resp.json().get("embeddings", [])]
