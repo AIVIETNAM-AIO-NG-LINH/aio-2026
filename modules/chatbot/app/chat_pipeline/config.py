@@ -40,8 +40,13 @@ class ChatConfig:
     ltm_top_k: int           # số lượt hội thoại cũ truy hồi làm ngữ cảnh.
     ltm_min_score: float     # ngưỡng điểm tối thiểu để giữ 1 kết quả LTM.
 
+    # --- Provider LLM cho agent (gemini|ollama) ---
+    llm_provider: str        # 'gemini' (mặc định) | 'ollama'
+    ollama_api_base: str     # vd http://ollama:11434
+    ollama_chat_model: str   # vd qwen2.5 / llama3.1
+
     @classmethod
-    def from_env(cls) -> "ChatConfig":
+    def from_env(cls) -> ChatConfig:
         return cls(
             chat_model=_env("GEMINI_CHAT_MODEL", default="gemini-2.5-flash"),
             context_top_k=_env_int("CHAT_CONTEXT_TOP_K", default=5),
@@ -52,4 +57,7 @@ class ChatConfig:
             ltm_index=_env("OPENSEARCH_CHAT_HISTORY_INDEX", default="chatbot-chat-history"),
             ltm_top_k=_env_int("CHAT_LTM_TOP_K", default=3),
             ltm_min_score=_env_float("CHAT_LTM_MIN_SCORE", default=0.5),
+            llm_provider=_env("LLM_PROVIDER", default="gemini").lower(),
+            ollama_api_base=_env("OLLAMA_API_BASE", default="http://ollama:11434"),
+            ollama_chat_model=_env("OLLAMA_CHAT_MODEL", default="qwen2.5"),
         )

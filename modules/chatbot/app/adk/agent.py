@@ -65,14 +65,28 @@ _THINKING_PLANNER = BuiltInPlanner(
 )
 
 
+def _build_model(cfg: ChatConfig):
+    """provider=ollama → LiteLlm(ollama_chat/...); gemini → string model như cũ."""
+    if cfg.llm_provider == "ollama":
+        from google.adk.models.lite_llm import LiteLlm
+        return LiteLlm(
+            model=f"ollama_chat/{cfg.ollama_chat_model}",
+            api_base=cfg.ollama_api_base,
+        )
+    return cfg.chat_model
+
+
 @functools.lru_cache(maxsize=1)
 def create_root_agent() -> Agent:
-    """Tạo (và cache) agent gốc có tool RAG. Model đọc từ env tại lần tạo đầu."""
-    chat_config = ChatConfig.from_env()
+    """Tạo (và cache) agent gốc có tool RAG. Model + provider đọc từ env tại lần tạo đầu."""
+    cfg = ChatConfig.from_env()
+    # _THINKING_PLANNER (include_thoughts) là tính năng riêng Gemini 2.5+; đa số model
+    # Ollama không hỗ trợ → tắt planner cho ollama để tránh lỗi/bỏ qua âm thầm.
+    planner = None if cfg.llm_provider == "ollama" else _THINKING_PLANNER
     return Agent(
         name=ROOT_AGENT_NAME,
-        model=chat_config.chat_model,
+        model=_build_model(cfg),
         instruction=AGENT_INSTRUCTION,
-        planner=_THINKING_PLANNER,
+        planner=planner,
         tools=[search_knowledge_base, search_knowledge_graph],
     )
