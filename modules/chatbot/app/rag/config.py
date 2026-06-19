@@ -36,6 +36,15 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _env_float(name: str, default: float) -> float:
+    """Parse env dạng float; lỗi/không set → default."""
+    raw = _env(name)
+    try:
+        return float(raw) if raw else default
+    except ValueError:
+        return default
+
+
 @dataclass(frozen=True)
 class RerankConfig:
     """Cross-encoder rerank top_n → top_k qua HTTP (PLUGGABLE, KHÔNG load model trong Django).
@@ -50,6 +59,11 @@ class RerankConfig:
     model: str
     api_key: str
     timeout: int
+    # Ngưỡng điểm liên quan (áp trên `rerank_score`, thang ~0..1 của cross-encoder).
+    # Chunk dưới ngưỡng bị loại → câu hỏi ngoài phạm vi tài liệu sẽ trả [] và bot
+    # từ chối thay vì "ghép" câu trả lời từ nhiễu. 0 = tắt lọc. Mặc định 0.3 (cân
+    # bằng cho bge-reranker-v2-m3). CHỈ áp khi rerank thực sự chạy (xem knowledge_base).
+    score_threshold: float
 
     @classmethod
     def from_env(cls) -> "RerankConfig":
@@ -59,6 +73,7 @@ class RerankConfig:
             model=_env("RERANK_MODEL", default="bge-reranker-v2-m3"),
             api_key=_env("RERANK_API_KEY"),
             timeout=_env_int("RERANK_TIMEOUT", default=15),
+            score_threshold=_env_float("RERANK_SCORE_THRESHOLD", default=0.3),
         )
 
 
