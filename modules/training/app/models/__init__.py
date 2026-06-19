@@ -9,6 +9,11 @@ from .training_period import TrainingPeriod
 from .training_class import TrainingClass
 from .training_instructor import TrainingInstructor
 from .training_class_instructor import TrainingClassInstructor
+from .training_branch import TrainingBranch
+from .training_department import TrainingDepartment
+from .training_title import TrainingTitle
+from .training_student import TrainingStudent
+from .training_class_student import TrainingClassStudent
 
 __all__ = [
     "TrainingStaff",
@@ -16,4 +21,9 @@ __all__ = [
     "TrainingClass",
     "TrainingInstructor",
     "TrainingClassInstructor",
+    "TrainingBranch",
+    "TrainingDepartment",
+    "TrainingTitle",
+    "TrainingStudent",
+    "TrainingClassStudent",
 ]
