@@ -7,5 +7,13 @@ thêm vào package này phải được re-export tại đây.
 from .training_staff import TrainingStaff
 from .training_period import TrainingPeriod
 from .training_class import TrainingClass
+from .training_instructor import TrainingInstructor
+from .training_class_instructor import TrainingClassInstructor
 
-__all__ = ["TrainingStaff", "TrainingPeriod", "TrainingClass"]
+__all__ = [
+    "TrainingStaff",
+    "TrainingPeriod",
+    "TrainingClass",
+    "TrainingInstructor",
+    "TrainingClassInstructor",
+]
