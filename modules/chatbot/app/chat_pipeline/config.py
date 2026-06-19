@@ -27,6 +27,7 @@ class ChatConfig:
 
     # --- Sinh câu trả lời (Gemini) ---
     chat_model: str          # model sinh câu trả lời (stream).
+    max_output_tokens: int   # trần token cho 1 câu trả lời (0 = không giới hạn).
     context_top_k: int       # số chunk RAG đưa vào context prompt.
     history_size: int        # số tin nhắn gần nhất (cả user+assistant) làm lịch sử.
 
@@ -44,6 +45,7 @@ class ChatConfig:
     def from_env(cls) -> "ChatConfig":
         return cls(
             chat_model=_env("GEMINI_CHAT_MODEL", default="gemini-2.5-flash"),
+            max_output_tokens=_env_int("CHAT_MAX_OUTPUT_TOKENS", default=0),
             context_top_k=_env_int("CHAT_CONTEXT_TOP_K", default=5),
             history_size=_env_int("CHAT_HISTORY_SIZE", default=10),
             title_enabled=_env_bool("CHAT_TITLE_ENABLED", default=True),

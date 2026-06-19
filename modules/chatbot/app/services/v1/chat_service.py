@@ -42,11 +42,13 @@ from ...transformers import ConversationTransformer, MessageTransformer
 from ...adk.constants import APP_NAME
 from ...adk.runner import get_runner, get_session_service
 from ...adk.session import create_session_with_history
-from ...adk.stream_handler import ADKStreamHandler
+from ...adk.stream_handler import ADKStreamHandler, StreamChunk
 from ...chat_pipeline.config import ChatConfig
 from ...chat_pipeline.history import load_history_contents
 from ...chat_pipeline.prompt import build_user_message
 from ...chat_pipeline.sse import done_event, emit_chat_events, error_event
+from ...chat_pipeline.token_quota import QuotaUnavailable, check_quota, record_usage
+from ...chat_pipeline.usage import TokenUsage
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +71,30 @@ class ChatService(BaseService):
         atomic — hai request song song cùng hội thoại xếp hàng, không lọt 2 lượt
         xử lý song song và không để lại message USER mồ côi khi lỗi giữa chừng.
         """
+        # Kiểm hạn mức token TRƯỚC khi tạo message & gọi LLM (ngoài transaction —
+        # tránh giữ DB lock trong lúc gọi HTTP sang api-aio). KHÔNG tạo message mồ côi
+        # khi bị chặn. Fail-CLOSED: không xác nhận được hạn mức → chặn 503 (khác hẳn
+        # "hết hạn mức" 429 để FE xử lý đúng: 503 cho retry, 429 báo hết quota).
+        try:
+            allowed = check_quota(dto.user_id)
+        except QuotaUnavailable:
+            self.exception(
+                translate(
+                    "Hiện chưa kiểm tra được hạn mức chat. Vui lòng thử lại sau.",
+                    ChatbotCatalog.TOKEN_QUOTA_UNAVAILABLE,
+                ),
+                http_status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        if not allowed:
+            self.exception(
+                translate(
+                    "Bạn đã dùng hết hạn mức token chat trong hôm nay. "
+                    "Vui lòng thử lại vào ngày mai.",
+                    ChatbotCatalog.TOKEN_QUOTA_EXCEEDED,
+                ),
+                http_status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         with transaction.atomic():
             conversation = self._resolve_conversation(dto)
 
@@ -127,6 +153,9 @@ class ChatService(BaseService):
         chat_config = ChatConfig.from_env()
 
         answer_parts: list[str] = []
+        # Cộng dồn token cả lượt (qua mọi lần gọi LLM). Khai báo NGOÀI try để nhánh
+        # except vẫn log được phần đã tiêu khi lỗi giữa chừng.
+        token_usage = TokenUsage()
         session_service = get_session_service()
         session = None
         user_id = str(conversation.user_id)
@@ -155,16 +184,20 @@ class ChatService(BaseService):
             prompt = build_user_message(dto.question, ltm_context)
             new_message = types.Content(role="user", parts=[types.Part(text=prompt)])
             handler = ADKStreamHandler()
-            chunks = (
-                out
+
+            def _chunks() -> Iterator[StreamChunk]:
+                # Cộng dồn token TỪNG event (event cuối mỗi lần gọi LLM mang usage),
+                # rồi mới bóc thành StreamChunk — handler bỏ qua usage nên gom ở đây.
                 for event in get_runner().run(
                     user_id=user_id,
                     session_id=session.id,
                     new_message=new_message,
                     run_config=RunConfig(streaming_mode=StreamingMode.SSE),
-                )
-                for out in handler.process(event)
-            )
+                ):
+                    token_usage.add(event.usage_metadata)
+                    yield from handler.process(event)
+
+            chunks = _chunks()
             # Điều phối thứ tự SSE nằm trong chat/sse.py (giữ trọn contract 1 chỗ);
             # ở đây chỉ lấy citations cuối về để lưu message. `answer_parts` do ta sở
             # hữu nên lỗi giữa chừng vẫn lưu được phần dở ở nhánh except.
@@ -183,7 +216,7 @@ class ChatService(BaseService):
             self.messages.mark_success(assistant_message, answer, citations)
             self._enqueue_background(conversation, dto.question, answer)
 
-            yield done_event(assistant_message.id)
+            yield done_event(assistant_message.id, token_usage.total_tokens)
         except Exception:
             logger.exception("[chat] lỗi khi sinh câu trả lời (conv=%s)", conversation.id)
             self.messages.mark_error(assistant_message, "".join(answer_parts))
@@ -195,6 +228,17 @@ class ChatService(BaseService):
                 assistant_message.id,
             )
         finally:
+            # Log tổng token cả lượt (cả khi lỗi giữa chừng vẫn ra phần đã tiêu).
+            logger.info(
+                "[chat] token usage (conv=%s msg=%s): %s",
+                conversation.id,
+                assistant_message.id,
+                token_usage.summary(),
+            )
+            # Ghi nhận token thực đã tiêu về api-aio (cộng hạn mức ngày). Đặt ở finally
+            # để token vẫn được tính kể cả khi lỗi giữa chừng (LLM đã chạy là đã tốn).
+            # Fail-safe sẵn trong record_usage; bỏ qua nếu chưa tiêu token nào.
+            record_usage(int(conversation.user_id), token_usage.total_tokens)
             # InMemorySessionService giữ session mãi → PHẢI xoá sau mỗi lượt (tránh rò bộ nhớ).
             if session is not None:
                 self._delete_session_safe(session_service, user_id, session.id)
