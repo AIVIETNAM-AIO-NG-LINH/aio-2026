@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "modules.example",
     "modules.media",
     "modules.chatbot.apps.ChatbotConfig",
+    "modules.training.apps.TrainingConfig",
 ]
 
 MIDDLEWARE = [
@@ -104,6 +105,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # `<app>/migrations/` mặc định của Django — khai báo lại vị trí cho app `chatbot`.
 MIGRATION_MODULES = {
     "chatbot": "modules.chatbot.database.migrations",
+    "training": "modules.training.database.migrations",
 }
 
 # --- Django REST Framework -------------------------------------------------
