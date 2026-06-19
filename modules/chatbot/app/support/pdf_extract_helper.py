@@ -14,6 +14,7 @@ from __future__ import annotations
 import io
 import logging
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from google.genai import types
@@ -67,7 +68,10 @@ def _page_has_significant_images(page: PageObject) -> bool:
     return False
 
 
-def extract_pdf_pages(file_bytes: bytes) -> list[ExtractedPage]:
+def extract_pdf_pages(
+    file_bytes: bytes,
+    on_page_progress: Callable[[int, int], None] | None = None,
+) -> list[ExtractedPage]:
     """Duyệt từng trang PDF: text-số trực tiếp; trang scan HOẶC có ảnh → OCR Gemini.
 
     Trang lai (đủ text-số nhưng kèm ảnh/chart) cũng OCR cả trang — Gemini đọc cả
@@ -75,6 +79,10 @@ def extract_pdf_pages(file_bytes: bytes) -> list[ExtractedPage]:
     Lỗi mở PDF (file hỏng/không phải PDF) → `UnsupportedDocumentError` để pipeline
     đánh FAILED đúng tài liệu này. Lỗi `extract_text()` của 1 trang chỉ làm trang
     đó coi như rỗng → rơi xuống nhánh OCR, không làm hỏng cả tài liệu.
+
+    `on_page_progress` (nếu có) được gọi sau MỖI trang xử lý xong với (số trang đã
+    xong, tổng số trang) — để caller phát tiến độ ngay trong lúc OCR (bước nặng
+    nhất) thay vì đứng yên. Không raise: lỗi callback không được làm hỏng extract.
     """
     try:
         reader = PdfReader(io.BytesIO(file_bytes))
@@ -83,6 +91,7 @@ def extract_pdf_pages(file_bytes: bytes) -> list[ExtractedPage]:
 
     pages: list[ExtractedPage] = []
     ocr_count = 0
+    total = len(reader.pages)
     for index, page in enumerate(reader.pages):
         page_number = index + 1
         try:
@@ -101,6 +110,12 @@ def extract_pdf_pages(file_bytes: bytes) -> list[ExtractedPage]:
             logger.warning("[extract] trang %d: không trích được text (trang rỗng)", page_number)
 
         pages.append(ExtractedPage(page=page_number, text=text))
+
+        if on_page_progress is not None:
+            try:
+                on_page_progress(page_number, total)
+            except Exception:
+                logger.exception("[extract] lỗi phát tiến độ trang %d (bỏ qua)", page_number)
 
     logger.info(
         "[extract] PDF %d trang (%d trang OCR scan/có ảnh, %d trang text-số thuần)",

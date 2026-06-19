@@ -43,6 +43,11 @@ logger = logging.getLogger(__name__)
 #: Lỗi mạng SDK chưa gói (httpx/urllib3…) cũng rơi xuống lưới task — vẫn FAILED.
 _EXTERNAL_ERRORS = (BotoCoreError, ClientError, genai_errors.APIError, OpenSearchException)
 
+#: Chia thanh tiến độ: extract (OCR theo trang) là bước NẶNG NHẤT (gần như toàn bộ
+#: thời gian ingest) nên chiếm 0..`_EXTRACT_PERCENT_BUDGET`%; phần đẩy OpenSearch
+#: dùng nốt khoảng còn lại tới 100%. embed nằm ở ranh giới (đứng tại mốc budget).
+_EXTRACT_PERCENT_BUDGET = 80
+
 
 def _push_progress(document: ChatbotDocument) -> None:
     """HOOK: gọi mỗi lần status/percent của tài liệu đổi — đẩy tiến độ ra FE.
@@ -188,7 +193,22 @@ def run_ingest_pipeline(document_id: int) -> None:
         file_bytes = S3Client().read_bytes(media.file_name)
 
         # 2) Trích text THEO TRANG (PDF/Word qua extractor lai pypdf + Gemini OCR).
-        pages = extract_pages(file_bytes, kind, media.mime_type)
+        #    Phát % theo số trang đã OCR (0..budget) để FE thấy tiến độ nhích ngay
+        #    trong lúc extract — bước nặng nhất — thay vì đứng INDEXING/0%. Chỉ emit
+        #    khi % (làm tròn) ĐỔI: nhiều trang có thể rơi vào cùng mốc % ở tài liệu
+        #    dày → tránh ghi DB + broadcast trùng.
+        last_extract_percent = -1
+
+        def _on_extract_page(done: int, total: int) -> None:
+            nonlocal last_extract_percent
+            percent = round(done / total * _EXTRACT_PERCENT_BUDGET) if total else 0
+            if percent != last_extract_percent:
+                last_extract_percent = percent
+                _emit_progress(document_id, percent=percent)
+
+        pages = extract_pages(
+            file_bytes, kind, media.mime_type, on_page_progress=_on_extract_page
+        )
         text = pages_to_text(pages)  # full-text cho summary/LightRAG
         if not text.strip():
             logger.warning("[pipeline] document_id=%s trích ra text rỗng -> FAILED", document_id)
@@ -224,10 +244,16 @@ def run_ingest_pipeline(document_id: int) -> None:
         # on_progress phát % trang đã index sau MỖI batch child → mỗi lần % đổi là
         # một lần _emit_progress → _push_progress đẩy tiến độ ra FE (mượt, không
         # nhảy một cục). Batch cuối phát đúng % cuối cùng nên không cần emit lại.
+        # Indexer trả 0..100; remap vào khoảng còn lại (budget..100) để nối tiếp %
+        # của bước extract thay vì tụt về 0 rồi leo lại.
         indexed = indexer.index_document(
             parent_meta,
             children,
-            on_progress=lambda percent: _emit_progress(document_id, percent=percent),
+            on_progress=lambda percent: _emit_progress(
+                document_id,
+                percent=_EXTRACT_PERCENT_BUDGET
+                + round(percent * (100 - _EXTRACT_PERCENT_BUDGET) / 100),
+            ),
         )
     except UnsupportedDocumentError as exc:
         logger.warning("[pipeline] document_id=%s không hỗ trợ: %s -> FAILED", document_id, exc)
