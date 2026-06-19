@@ -1,0 +1,3 @@
+# Bỏ qua toàn bộ dữ liệu trong data/ (CSV nguồn ~16MB), chỉ giữ thư mục.
+*
+!.gitignore
