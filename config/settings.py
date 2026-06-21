@@ -148,3 +148,23 @@ if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = env.bool("DJANGO_SESSION_COOKIE_SECURE", default=False)
     CSRF_COOKIE_SECURE = env.bool("DJANGO_CSRF_COOKIE_SECURE", default=False)
+
+# --- Logging ---------------------------------------------------------------
+# Django mặc định chỉ in WARNING+ cho logger ngoài 'django' → log INFO trong code
+# app (vd token usage mỗi lượt chat) bị nuốt. Bật riêng logger gốc `modules` ở mức
+# INFO ra console; KHÔNG đụng log thư viện bên thứ ba (tránh nhiễu). Đổi qua env.
+LOG_LEVEL = env("LOG_LEVEL", default="INFO")
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+    },
+    "loggers": {
+        "modules": {
+            "handlers": ["console"],
+            "level": LOG_LEVEL,
+            "propagate": False,
+        },
+    },
+}

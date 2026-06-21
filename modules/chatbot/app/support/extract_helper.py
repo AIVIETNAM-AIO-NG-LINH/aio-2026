@@ -12,6 +12,8 @@ summary/LightRAG). `ExtractedPage` được re-export từ `pdf_extract_helper`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from ..rag.exceptions import UnsupportedDocumentError
 from .pdf_extract_helper import ExtractedPage, extract_pdf_pages
 from .word_to_pdf_helper import word_to_pdf
@@ -35,18 +37,22 @@ def extract_pages(
     file_bytes: bytes,
     kind: str,
     mime_type: str | None,
+    on_page_progress: Callable[[int, int], None] | None = None,
 ) -> list[ExtractedPage]:
     """Trích text THEO TRANG, trả [ExtractedPage(page, text)] (page từ 1).
 
     PDF  → duyệt từng trang bằng pypdf (text-số trực tiếp, scan thì OCR Gemini).
     WORD → convert .doc/.docx → PDF (LibreOffice headless) rồi duyệt trang như PDF.
     khác → không nên tới đây (pipeline đã gate), nhưng vẫn raise cho chắc.
+
+    `on_page_progress` (nếu có) chuyển thẳng xuống luồng PDF để phát tiến độ theo
+    từng trang trong lúc OCR (xem `extract_pdf_pages`).
     """
     if kind == KIND_PDF:
-        return extract_pdf_pages(file_bytes)
+        return extract_pdf_pages(file_bytes, on_page_progress)
     if kind == KIND_WORD:
         pdf_bytes = word_to_pdf(file_bytes, mime_type)
-        return extract_pdf_pages(pdf_bytes)
+        return extract_pdf_pages(pdf_bytes, on_page_progress)
     raise UnsupportedDocumentError(f"Loại tài liệu không hỗ trợ: kind={kind!r}")
 
 

@@ -30,7 +30,8 @@ services:
     restart: unless-stopped
     # Chờ-DB + migrate là việc của `web`; worker bỏ qua entrypoint, chạy thẳng celery.
     entrypoint: []
-    command: celery -A config worker --loglevel=info
+    # --concurrency=2: tối đa 2 task chạy song song (vd ingest nặng) tránh quá tải.
+    command: celery -A config worker --loglevel=info --concurrency=2
     env_file: ../.env
     environment:
       DB_HOST: db          # alias MariaDB dùng chung (ở nginx-aio)

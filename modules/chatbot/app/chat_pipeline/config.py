@@ -27,6 +27,7 @@ class ChatConfig:
 
     # --- Sinh câu trả lời (Gemini) ---
     chat_model: str          # model sinh câu trả lời (stream).
+    max_output_tokens: int   # trần token cho 1 câu trả lời (0 = không giới hạn).
     context_top_k: int       # số chunk RAG đưa vào context prompt.
     history_size: int        # số tin nhắn gần nhất (cả user+assistant) làm lịch sử.
 
@@ -45,10 +46,16 @@ class ChatConfig:
     ollama_api_base: str     # vd http://ollama:11434
     ollama_chat_model: str   # vd qwen2.5 / llama3.1
 
+    # --- File người dùng đính kèm trong chat (đẩy lên Gemini Files API) ---
+    attached_files_enabled: bool   # bật/tắt tính năng đính kèm file trong chat.
+    attached_files_max: int        # trần số file đính kèm mỗi lượt (chống lạm dụng).
+    gemini_file_ttl_hours: int     # TTL Files API (~48h) — quá hạn thì re-push.
+
     @classmethod
     def from_env(cls) -> ChatConfig:
         return cls(
             chat_model=_env("GEMINI_CHAT_MODEL", default="gemini-2.5-flash"),
+            max_output_tokens=_env_int("CHAT_MAX_OUTPUT_TOKENS", default=0),
             context_top_k=_env_int("CHAT_CONTEXT_TOP_K", default=5),
             history_size=_env_int("CHAT_HISTORY_SIZE", default=10),
             title_enabled=_env_bool("CHAT_TITLE_ENABLED", default=True),
@@ -60,4 +67,7 @@ class ChatConfig:
             llm_provider=_env("LLM_PROVIDER", default="gemini").lower(),
             ollama_api_base=_env("OLLAMA_API_BASE", default="http://ollama:11434"),
             ollama_chat_model=_env("OLLAMA_CHAT_MODEL", default="qwen2.5"),
+            attached_files_enabled=_env_bool("CHAT_ATTACHED_FILES_ENABLED", default=True),
+            attached_files_max=_env_int("CHAT_ATTACHED_FILES_MAX", default=5),
+            gemini_file_ttl_hours=_env_int("GEMINI_FILE_TTL_HOURS", default=48),
         )

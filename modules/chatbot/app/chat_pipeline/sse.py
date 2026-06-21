@@ -14,7 +14,7 @@ Thứ tự đảm bảo cho FE:
   - `delta`     {type, content}                                 — mẩu câu trả lời
   - `thinking`  {type, content}                                 — mẩu suy luận
   - `citations` {type, citations}                               — tool gọi lần 2+
-  - `done`      {type, status: "success", message_id}           — kết thúc OK
+  - `done`      {type, status: "success", message_id, total_tokens} — kết thúc OK
   - `error`     {type, status: "error", message, message_id}    — kết thúc lỗi
 
 Mỗi phần tử trong `citations` theo contract `citations.Citation`.
@@ -64,9 +64,20 @@ def citations_event(citations: list[dict[str, Any]]) -> str:
     return _sse({"type": "citations", "citations": citations})
 
 
-def done_event(message_id: int) -> str:
-    """Kết thúc thành công — event cuối cùng của stream."""
-    return _sse({"type": "done", "status": "success", "message_id": message_id})
+def done_event(message_id: int, total_tokens: int = 0) -> str:
+    """Kết thúc thành công — event cuối cùng của stream.
+
+    `total_tokens`: tổng token LLM tiêu cho lượt này (prompt + thinking + output,
+    cộng dồn qua các lần gọi model) — FE dùng để hiển thị/đối soát hạn mức.
+    """
+    return _sse(
+        {
+            "type": "done",
+            "status": "success",
+            "message_id": message_id,
+            "total_tokens": total_tokens,
+        }
+    )
 
 
 def error_event(message: str, message_id: int) -> str:

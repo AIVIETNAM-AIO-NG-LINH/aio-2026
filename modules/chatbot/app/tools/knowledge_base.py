@@ -58,6 +58,23 @@ def search(
     # 3) Rerank theo query → xếp lại; tắt/lỗi → giữ hybrid.
     ranked = rerank(query, candidates, rerank_config)
 
+    # 3b) Lọc theo ngưỡng điểm liên quan — CHỈ khi rerank thực sự chạy (item có
+    # `rerank_score`; điểm RRF hybrid không cùng thang nên không áp ngưỡng cho nó,
+    # fail-safe). Câu hỏi ngoài phạm vi tài liệu → mọi chunk dưới ngưỡng bị loại →
+    # trả [] → agent từ chối ("không có trong tài liệu") thay vì ghép từ nhiễu.
+    threshold = rerank_config.score_threshold
+    reranked = any("rerank_score" in c for c in ranked)
+    if threshold > 0 and reranked:
+        kept = [c for c in ranked if c.get("rerank_score", 0.0) >= threshold]
+        if len(kept) != len(ranked):
+            logger.info(
+                "[retrieve] lọc ngưỡng %.3f: %d → %d chunk đạt",
+                threshold,
+                len(ranked),
+                len(kept),
+            )
+        ranked = kept
+
     # 4) Cắt top_k, build payload trả về (số trang surface cho caller).
     items = [
         {
