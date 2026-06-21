@@ -180,9 +180,18 @@ class ChatService(BaseService):
             )
             session = create_session_with_history(session_service, user_id, history)
 
-            # 3) Chạy ADK Runner (SSE) — agent tự gọi tool RAG khi cần.
-            prompt = build_user_message(dto.question, ltm_context)
-            new_message = types.Content(role="user", parts=[types.Part(text=prompt)])
+            # 2b) Đính kèm file user upload cho lượt này (đẩy media lên Gemini Files API).
+            #     Fail-safe: lỗi đẩy file KHÔNG làm hỏng lượt chat (chỉ mất phần đính kèm).
+            attachment_parts, attached_names = self._attach_files(
+                conversation, user_message, dto.media_ids
+            )
+
+            # 3) Chạy ADK Runner (SSE) — agent tự gọi tool RAG khi cần. File đính kèm
+            #    đi cùng Content dưới dạng Part (Gemini đọc native); tên file vào prompt.
+            prompt = build_user_message(dto.question, ltm_context, attached_names)
+            new_message = types.Content(
+                role="user", parts=[types.Part(text=prompt), *attachment_parts]
+            )
             handler = ADKStreamHandler()
 
             def _chunks() -> Iterator[StreamChunk]:
@@ -242,6 +251,32 @@ class ChatService(BaseService):
             # InMemorySessionService giữ session mãi → PHẢI xoá sau mỗi lượt (tránh rò bộ nhớ).
             if session is not None:
                 self._delete_session_safe(session_service, user_id, session.id)
+
+    # --- Đính kèm file ----------------------------------------------------
+    @staticmethod
+    def _attach_files(
+        conversation: ChatConversation,
+        user_message: ChatMessage,
+        media_ids: tuple[int, ...],
+    ) -> tuple[list[types.Part], list[str]]:
+        """Đẩy media đính kèm lên Gemini + trả `(parts, tên_file)`. FAIL-SAFE toàn cục.
+
+        Lỗi bất kỳ (import/DB/S3/Gemini) → trả rỗng để lượt chat vẫn chạy bình thường
+        (chỉ thiếu file). Fail-safe theo TỪNG file đã nằm sẵn trong `ChatAttachments`.
+        """
+        if not media_ids:
+            return [], []
+        try:
+            from ...support.chat_attachments import ChatAttachments
+
+            return ChatAttachments().attach_to_turn(
+                conversation, user_message, media_ids
+            )
+        except Exception:
+            logger.exception(
+                "[chat] đính kèm file lỗi (conv=%s, bỏ qua)", conversation.id
+            )
+            return [], []
 
     # --- Session ADK ------------------------------------------------------
     @staticmethod
