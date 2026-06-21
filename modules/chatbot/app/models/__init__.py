@@ -6,6 +6,7 @@ vào package này phải được re-export tại đây.
 
 from .chat_conversation import ChatConversation
 from .chat_message import ChatMessage
+from .chat_message_file import ChatMessageFile
 from .chatbot_document import ChatbotDocument
 
-__all__ = ["ChatConversation", "ChatMessage", "ChatbotDocument"]
+__all__ = ["ChatConversation", "ChatMessage", "ChatMessageFile", "ChatbotDocument"]

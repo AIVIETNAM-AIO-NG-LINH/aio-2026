@@ -71,6 +71,23 @@ class GeminiClient:
         )
         return (response.text or "").strip()
 
+    # --- Upload file (Files API) --------------------------------------------
+    def upload_file(self, file_bytes: bytes, mime_type: str | None) -> tuple[str, str]:
+        """Đẩy bytes file lên **Gemini Files API**, trả `(file_uri, mime_type)`.
+
+        Dùng cho luồng chat đính kèm file: file upload 1 lần, lấy URI để gắn vào
+        message qua `types.Part.from_uri` (Gemini đọc file native, không cần extract
+        text). `mime_type` phải là loại Gemini đọc được (PDF/ảnh…); Word cần convert
+        PDF trước. Raise nếu upload lỗi — caller tự fail-safe.
+        """
+        import io
+
+        kwargs: dict[str, Any] = {"file": io.BytesIO(file_bytes)}
+        if mime_type:
+            kwargs["config"] = {"mime_type": mime_type}
+        uploaded = self._client.files.upload(**kwargs)
+        return (uploaded.uri or ""), (uploaded.mime_type or mime_type or "")
+
     # --- Embedding -----------------------------------------------------------
     def _embed_config(self, dims: int, task_type: str):
         from google.genai import types
