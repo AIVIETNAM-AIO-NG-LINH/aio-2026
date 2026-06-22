@@ -36,3 +36,12 @@ class ChatbotCatalog(LangCatalog):
     DOCUMENT_ID_INVALID = _NS + ".DOCUMENT_ID_INVALID"
     DOCUMENT_ID_MIN = _NS + ".DOCUMENT_ID_MIN"
     DOCUMENT_NOT_FOUND = _NS + ".DOCUMENT_NOT_FOUND"
+
+    # Validate đổi tên hội thoại (UpdateConversationRequest)
+    TITLE_REQUIRED = _NS + ".TITLE_REQUIRED"
+    TITLE_BLANK = _NS + ".TITLE_BLANK"
+    TITLE_MAX = _NS + ".TITLE_MAX"
+
+    # Kết quả thao tác hội thoại (ChatService)
+    RENAME_SUCCESS = _NS + ".RENAME_SUCCESS"
+    DELETE_SUCCESS = _NS + ".DELETE_SUCCESS"

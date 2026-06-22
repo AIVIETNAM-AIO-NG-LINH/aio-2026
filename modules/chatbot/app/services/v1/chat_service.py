@@ -317,19 +317,70 @@ class ChatService(BaseService):
             )
 
     # --- API đọc lịch sử ---------------------------------------------------
-    def list_conversations(self, user_id: int, page: int, limit: int) -> Response:
+    def list_conversations(
+        self, user_id: int, page: int, limit: int, max_id: int | None = None
+    ) -> Response:
         """Danh sách hội thoại của user (mới nhất trước), có phân trang.
 
         Shape Fractal (khớp API list bên Laravel): `{data: [...], meta: {pagination}}`.
+        `max_id` chốt anchor cursor để FE phân trang ổn định (xem repository).
         """
         total, conversations = self.conversations.paginate_for_user(
-            user_id, page, limit
+            user_id, page, limit, max_id
         )
         data = TransformerService.paginator(
             TransformerService.make_paginator(conversations, total, limit, page),
             ConversationTransformer(),
         )
         return self.response_success(data)
+
+    def rename_conversation(
+        self, user_id: int, conversation_id: int, title: str
+    ) -> Response:
+        """Đổi tiêu đề một hội thoại của user; kiểm tra quyền sở hữu.
+
+        Trả về hội thoại sau khi cập nhật (shape `ConversationTransformer`, envelope
+        GA `{data: {...}}`). Không phải của user / không tồn tại → 404 shape V1.
+        """
+        conversation = self.conversations.find_owned(conversation_id, user_id)
+        if conversation is None:
+            self.not_found(
+                translate("Hội thoại không tồn tại", ChatbotCatalog.CONVERSATION_NOT_FOUND)
+            )
+
+        conversation = self.conversations.update_model(conversation, {"title": title})
+        # Khớp envelope Laravel V1 (xem DocumentService::reindex): bọc item trong
+        # key `data` + kèm `message` → FE nhận `{data: {data: {...}, message, success: 1}}`.
+        data = TransformerService.item(conversation, ConversationTransformer())
+        return self.response_success(
+            {
+                "data": data,
+                "message": translate(
+                    "Đổi tên hội thoại thành công", ChatbotCatalog.RENAME_SUCCESS
+                ),
+            }
+        )
+
+    def delete_conversation(self, user_id: int, conversation_id: int) -> Response:
+        """Xoá (mềm) một hội thoại của user; kiểm tra quyền sở hữu.
+
+        Soft delete (`deleted_at`) — message con vẫn còn trong DB nhưng hội thoại
+        biến mất khỏi list. Không phải của user / không tồn tại → 404 shape V1.
+        """
+        conversation = self.conversations.find_owned(conversation_id, user_id)
+        if conversation is None:
+            self.not_found(
+                translate("Hội thoại không tồn tại", ChatbotCatalog.CONVERSATION_NOT_FOUND)
+            )
+
+        self.conversations.delete_model(conversation)
+        return self.response_success(
+            {
+                "message": translate(
+                    "Đã xoá hội thoại", ChatbotCatalog.DELETE_SUCCESS
+                ),
+            }
+        )
 
     def list_messages(
         self, user_id: int, conversation_id: int, page: int, limit: int

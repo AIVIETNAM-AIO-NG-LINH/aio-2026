@@ -1,9 +1,11 @@
 """Routes CÔNG KHAI của module Chatbot (luồng chat người dùng cuối).
 
 Nối vào config/urls.py dưới prefix `api/v1/chatbot/`, nên path đầy đủ:
-  - POST `/api/v1/chatbot/chat`                                  — hỏi đáp (SSE).
-  - GET  `/api/v1/chatbot/conversations`                        — list hội thoại.
-  - GET  `/api/v1/chatbot/conversations/<id>/messages`          — list tin nhắn.
+  - POST  `/api/v1/chatbot/chat`                                 — hỏi đáp (SSE).
+  - GET   `/api/v1/chatbot/conversations`                        — list hội thoại.
+  - PATCH `/api/v1/chatbot/conversations/<id>`                   — đổi tên hội thoại.
+  - DELETE `/api/v1/chatbot/conversations/<id>`                  — xoá (mềm) hội thoại.
+  - GET   `/api/v1/chatbot/conversations/<id>/messages`          — list tin nhắn.
 
 Cả nhóm là 1 ViewSet (`ChatController`) — mỗi path map vào 1 action qua
 ``as_view({method: action})``, method khác trên cùng path tự trả 405. Tất cả gắn
@@ -31,6 +33,13 @@ urlpatterns = [
         "conversations",
         ensure_authenticated(ChatController.as_view({"get": "conversations"})),
         name="chatbot-conversation-list",
+    ),
+    path(
+        "conversations/<int:conversation_id>",
+        ensure_authenticated(
+            ChatController.as_view({"patch": "rename", "delete": "destroy"})
+        ),
+        name="chatbot-conversation-update",
     ),
     path(
         "conversations/<int:conversation_id>/messages",

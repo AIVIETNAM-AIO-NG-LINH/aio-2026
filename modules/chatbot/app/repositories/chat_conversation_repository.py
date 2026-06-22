@@ -45,10 +45,19 @@ class ChatConversationRepository(
         return self.create({"user_id": user_id, "status": ConversationStatus.OPEN})
 
     def paginate_for_user(
-        self, user_id: int, page: int, limit: int
+        self, user_id: int, page: int, limit: int, max_id: int | None = None
     ) -> tuple[int, list[ChatConversation]]:
-        """`(total, items)` hội thoại của user, mới nhất trước."""
-        qs = self.query().filter(user_id=user_id).order_by("-id")
+        """`(total, items)` hội thoại của user, mới nhất trước.
+
+        `max_id` (tuỳ chọn) chốt một anchor cursor: chỉ tính các hội thoại có
+        ``id <= max_id``. FE bắt id lớn nhất ở lần load đầu rồi gửi kèm mọi trang
+        sau → snapshot ổn định, hội thoại mới tạo (id lớn hơn) bị loại khỏi cửa sổ
+        phân trang nên không đẩy lệch các trang (khớp đúng ``order_by("-id")``).
+        """
+        qs = self.query().filter(user_id=user_id)
+        if max_id is not None:
+            qs = qs.filter(id__lte=max_id)
+        qs = qs.order_by("-id")
         offset = (page - 1) * limit
         return qs.count(), list(qs[offset : offset + limit])
 
