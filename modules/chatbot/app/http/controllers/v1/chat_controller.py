@@ -84,11 +84,15 @@ class ChatController(ViewSet):
         Nhận thêm query `max_id` (tuỳ chọn) làm anchor cursor để phân trang ổn định:
         FE bắt id lớn nhất ở lần load đầu rồi gửi kèm mọi trang sau, hội thoại mới
         tạo không đẩy lệch trang. `max_id` sai kiểu/không phải số dương → bỏ qua.
+
+        Query `q` (tuỳ chọn) lọc theo từ khoá: khớp tiêu đề HOẶC nội dung tin nhắn;
+        rỗng/chỉ khoảng trắng → bỏ qua (trả list thường).
         """
         user_id = CurrentUser().get_id()
         page, limit = parse_pagination(request)
         max_id = self._parse_max_id(request)
-        return chat_service.list_conversations(user_id, page, limit, max_id)
+        q = (request.query_params.get("q") or "").strip() or None
+        return chat_service.list_conversations(user_id, page, limit, max_id, q)
 
     @staticmethod
     def _parse_max_id(request: Request) -> int | None:

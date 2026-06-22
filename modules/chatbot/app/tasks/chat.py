@@ -49,8 +49,21 @@ def generate_conversation_title(conversation_id: int, question: str, answer: str
     if not title:
         return
     # Set có điều kiện để không đè nếu lượt khác vừa ghi xong (idempotent).
-    conversations.set_title_if_empty(conversation_id, title)
-    logger.info("[title] conv=%s → %r", conversation_id, title)
+    won = conversations.set_title_if_empty(conversation_id, title)
+    logger.info("[title] conv=%s → %r (won=%s)", conversation_id, title, won)
+
+    # CHỈ lượt thắng ghi DB mới đẩy realtime (tránh push trùng khi nhiều lượt đua).
+    # Push riêng cho chủ hội thoại → FE cập nhật tiêu đề ở sidebar tức thì, khỏi poll.
+    # Fail-safe: RealtimeClient tự nuốt lỗi, không raise lên task.
+    if won:
+        from modules.base.clients.realtime_client import realtime_client
+        from ..enums.realtime_event import RealtimeEvent
+
+        realtime_client().to_user(
+            conversation.user_id,
+            RealtimeEvent.CONVERSATION_TITLE.value,
+            {"id": conversation_id, "title": title},
+        )
 
 
 @shared_task(name="chatbot.index_chat_turn")

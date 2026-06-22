@@ -10,6 +10,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+    container_name: ai-aio-web
     restart: unless-stopped
     # Override the image's Gunicorn CMD with Django's auto-reloading dev server.
     command: python manage.py runserver 0.0.0.0:8000
@@ -30,6 +31,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+    container_name: ai-aio-worker
     restart: unless-stopped
     # Chờ-DB + migrate là việc của `web`; worker bỏ qua entrypoint, chạy thẳng celery.
     entrypoint: []
@@ -48,6 +50,7 @@ services:
   # Single-node dev, TẮT security plugin (http, không user/password) đúng với .env.
   opensearch:
     image: opensearchproject/opensearch:2.19.1
+    container_name: ai-aio-opensearch
     restart: unless-stopped
     environment:
       discovery.type: single-node
@@ -70,6 +73,7 @@ services:
   # PostgreSQL + pgvector — LightRAG dùng PGKVStorage/PGVectorStorage/PGDocStatusStorage.
   postgres:
     image: pgvector/pgvector:pg16
+    container_name: ai-aio-postgres
     restart: unless-stopped
     profiles: ["lightrag"]
     environment:
@@ -84,6 +88,7 @@ services:
   # Neo4j — LightRAG dùng Neo4JStorage cho graph.
   neo4j:
     image: neo4j:5
+    container_name: ai-aio-neo4j
     restart: unless-stopped
     profiles: ["lightrag"]
     environment:

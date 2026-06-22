@@ -17,6 +17,8 @@ class MessageTransformer(TransformerAbstract):
             "id": row.id,
             "role": row.role,
             "content": row.content,
+            # Suy nghĩ (reasoning) để FE dựng lại khối thinking; "" nếu không có.
+            "reasoning": row.reasoning or "",
             "citations": row.citations,
             "status": row.status,
             "created_at": row.fmt_dt(row.created_at),

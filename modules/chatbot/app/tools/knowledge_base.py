@@ -10,7 +10,8 @@ Luồng (mỗi bước fail-safe, hỏng bước phụ không làm chết truy h
   3) Rerank cross-encoder QUA HTTP trên (query, chunk_text) → xếp lại; tắt/lỗi → giữ hybrid.
   4) Cắt top_k, trả JSON list {chunk_text, score, document_id, media_id, original_name, page}.
 
-Số trang được surface để caller/LLM trích "trang X". Đồng bộ (xử lý trong request) —
+Số trang được surface để caller/LLM trích "trang X". Link tải tài liệu KHÔNG gắn ở đây —
+là tool riêng `get_document_url` (LLM tự quyết gọi). Đồng bộ (xử lý trong request) —
 truy hồi nhanh, khác ingest chạy nền qua Celery.
 """
 

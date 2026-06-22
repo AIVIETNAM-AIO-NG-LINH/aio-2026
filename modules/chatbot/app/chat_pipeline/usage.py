@@ -39,8 +39,10 @@ class TokenUsage:
     ) -> None:
         """Cộng dồn `usage_metadata` của 1 event ADK (bỏ qua nếu None/rỗng).
 
-        Event partial (mẩu stream) thường không mang usage → None; chỉ event cuối
-        của mỗi lần gọi model mới có. Vì vậy mỗi lần `add` đếm là 1 `llm_call`.
+        CHỈ gọi cho event FINAL của mỗi lần gọi model (`event.partial` False/None) —
+        xem `chat_service._chunks`. Event partial (mẩu stream) CŨNG mang
+        `usage_metadata` nhưng là CUMULATIVE (cộng dồn trong cùng lần gọi), nên nếu
+        gọi `add` cho cả partial sẽ đếm lặp. Vì chỉ cộng final, mỗi `add` = 1 `llm_call`.
         """
         if usage_metadata is None:
             return

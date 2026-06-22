@@ -7,6 +7,9 @@ lời). Row ASSISTANT được tạo trước với status=PROCESSING rồi cậ
 `citations` lưu danh sách nguồn (chunk RAG) đã dùng để sinh câu trả lời, dạng
 JSON: `[{document_id, media_id, original_name, page, score}, ...]` — để FE hiển
 thị "trích từ tài liệu X, trang Y".
+
+`reasoning` lưu nội dung "suy nghĩ" (reasoning/thoughts) model phát trước câu trả
+lời — để FE dựng lại khối thinking khi mở lại hội thoại (rỗng nếu model không nghĩ).
 """
 
 from __future__ import annotations
@@ -31,6 +34,8 @@ class ChatMessage(SoftDeleteModel):
     )
     role = models.CharField(max_length=20, choices=MessageRole.choices)
     content = models.TextField(blank=True, default="")
+    # Suy nghĩ (reasoning) model phát trước câu trả lời — rỗng nếu không có / message USER.
+    reasoning = models.TextField(blank=True, default="")
     # Nguồn trích dẫn (chunk RAG) cho message ASSISTANT — null với message USER.
     citations = models.JSONField(null=True, blank=True, default=None)
     status = models.CharField(
