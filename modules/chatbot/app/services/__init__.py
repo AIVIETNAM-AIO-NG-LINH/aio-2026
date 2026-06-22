@@ -4,6 +4,6 @@
 — là công cụ, không phải orchestration. Import `from ..tools import knowledge_base`.)
 """
 
-from .v1 import ChatService, IngestDocumentService
+from .v1 import ChatService, IngestDocumentService, PurgeDocumentService
 
-__all__ = ["ChatService", "IngestDocumentService"]
+__all__ = ["ChatService", "IngestDocumentService", "PurgeDocumentService"]

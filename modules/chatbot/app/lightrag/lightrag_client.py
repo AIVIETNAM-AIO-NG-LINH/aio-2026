@@ -68,6 +68,38 @@ class LightRagIndexer(BaseLightRagClient):
 
         return await self._run_with_rag(action)
 
+    def delete_document(self, document_id: int) -> bool:
+        """Sync wrapper fail-safe: xoá tài liệu khỏi KG khi gỡ khỏi kho.
+
+        Trả True nếu xoá thành công; False nếu KG tắt / lỗi (đã log). KHÔNG raise:
+        KG là nguồn phụ, lỗi xoá chỉ log (task purge vẫn dọn rag-index + summary).
+        """
+        if not self.enabled:
+            logger.info("[lightrag] LIGHTRAG_ENABLED=false, bỏ qua xoá document_id=%s", document_id)
+            return False
+
+        try:
+            return asyncio.run(self._adelete_document(document_id))
+        except Exception:
+            logger.exception("[lightrag] document_id=%s lỗi xoá KG (bỏ qua)", document_id)
+            return False
+
+    async def _adelete_document(self, document_id: int) -> bool:
+        """Xoá doc khỏi KG theo doc_id `chatbot_{document_id}` (no-op nếu chưa có)."""
+        doc_id = f"chatbot_{document_id}"
+
+        async def action(rag: LightRAG) -> bool:
+            try:
+                await rag.adelete_by_doc_id(doc_id)
+            except Exception:
+                logger.warning(
+                    "[lightrag] adelete_by_doc_id(%s) bỏ qua (có thể chưa tồn tại)", doc_id
+                )
+            logger.info("[lightrag] document_id=%s đã xoá khỏi KG (doc_id=%s)", document_id, doc_id)
+            return True
+
+        return await self._run_with_rag(action)
+
 
 class LightRagQuerier(BaseLightRagClient):
     """Truy vấn knowledge graph lúc chat — trả CONTEXT thô (không sinh câu trả lời).
