@@ -14,7 +14,9 @@ services:
     restart: unless-stopped
     # Override the image's Gunicorn CMD with Django's auto-reloading dev server.
     command: python manage.py runserver 0.0.0.0:8000
-    env_file: ../.env
+    env_file:
+      - ../.env          # config không bảo mật
+      - ./secrets.env    # 🔐 secret (gitignored)
     environment:
       DB_HOST: db          # alias MariaDB dùng chung (ở nginx-aio)
     volumes:
@@ -37,7 +39,9 @@ services:
     entrypoint: []
     # --concurrency=2: tối đa 2 task chạy song song (vd ingest nặng) tránh quá tải.
     command: celery -A config worker --loglevel=info --concurrency=2
-    env_file: ../.env
+    env_file:
+      - ../.env          # config không bảo mật
+      - ./secrets.env    # 🔐 secret (gitignored)
     environment:
       DB_HOST: db          # alias MariaDB dùng chung (ở nginx-aio)
     volumes:

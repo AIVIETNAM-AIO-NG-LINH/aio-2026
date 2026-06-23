@@ -119,10 +119,18 @@ Server dev tự reload khi sửa code (thư mục được mount vào container)
 ## Chạy production (Gunicorn)
 
 ```bash
+# 1. Up data-aio TRƯỚC (tạo aio-net + db/redis/opensearch/postgres/neo4j)
+#    xem ../data-aio/README.md
+# 2. Secret cho docker: cp docker/secrets.env.example docker/secrets.env rồi điền
+# 3. Build & up (chỉ web + worker — data store lấy từ data-aio)
 docker compose -f docker/docker-compose.prod.yml up --build -d
 ```
 
-Khác với dev: dùng Gunicorn (theo CMD trong Dockerfile), `DJANGO_DEBUG=False`, không mount code. Nhớ đổi `DJANGO_SECRET_KEY`, `INTERNAL_TOKEN`, secret DB/S3/Gemini trong `.env` trước khi deploy thật. Nếu đã có cluster OpenSearch riêng (có auth): xoá service `opensearch` trong compose và trỏ `OPENSEARCH_URL/USER/PASSWORD` sang cluster đó.
+Khác với dev: dùng Gunicorn (theo CMD trong Dockerfile), `DJANGO_DEBUG=False`, không mount code.
+
+**Data store** (db, redis, opensearch, postgres, neo4j) đã **chuyển sang [data-aio](../data-aio)** — prod compose KHÔNG còn khai chúng, chỉ còn `web` + `worker`, nối vào `aio-net` (external) qua alias `db`/`redis`/`opensearch`/`postgres`/`neo4j`.
+
+**Secret tách riêng** (không nằm trong `.env`/`.env.example` nữa): `DJANGO_SECRET_KEY`, mật khẩu DB, `INTERNAL_TOKEN`, AWS/Gemini key, password OpenSearch/LightRAG, `RERANK_API_KEY` → để ở [docker/secrets.env](docker/secrets.env) (gitignored), docker nạp qua `env_file`. Template: [docker/secrets.env.example](docker/secrets.env.example). Đổi hết giá trị mặc định trước khi deploy thật.
 
 ### Knowledge graph (LightRAG) — tùy chọn
 

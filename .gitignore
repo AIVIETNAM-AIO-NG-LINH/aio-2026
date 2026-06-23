@@ -22,6 +22,8 @@ staticfiles/
 
 # Environment secrets (keep .env.example tracked)
 .env
+# Secret cho docker (keep secrets.env.example tracked)
+/docker/secrets.env
 
 # Editors / OS
 .idea/
