@@ -65,7 +65,7 @@ class RequestValidationException(APIException):
         # Default dịch LÚC RAISE (per-request) — không đặt ở default param vì
         # default param evaluate lúc import, sai ngôn ngữ khi có bản dịch thật.
         if message is None:
-            message = translate("Invalid data transmission", CommonCatalog.INVALID_DATA)
+            message = translate("Dữ liệu truyền không hợp lệ", CommonCatalog.INVALID_DATA)
         self.fields = fields
         self.message = message
         super().__init__(detail=message)

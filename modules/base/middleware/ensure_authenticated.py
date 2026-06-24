@@ -40,7 +40,7 @@ class EnsureAuthenticated(MiddlewareMixin):
 
         if user_id <= 0:
             return JsonResponse(
-                {"message": translate("Unauthenticated", CommonCatalog.UNAUTHENTICATED)},
+                {"message": translate("Chưa xác thực", CommonCatalog.UNAUTHENTICATED)},
                 status=401,
             )
 

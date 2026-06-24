@@ -34,7 +34,7 @@ class VerifyInternalToken:
 
             if not (expected and constant_time_compare(expected, provided)):
                 return JsonResponse(
-                    {"message": translate("Forbidden", CommonCatalog.FORBIDDEN)},
+                    {"message": translate("Không có quyền truy cập", CommonCatalog.FORBIDDEN)},
                     status=403,
                 )
 
