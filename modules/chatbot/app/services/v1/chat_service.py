@@ -53,6 +53,7 @@ from ...chat_pipeline.sse import (
     emit_chat_events,
     error_event,
     mindmap_event,
+    mindmap_pending_event,
 )
 from ...chat_pipeline.token_quota import QuotaUnavailable, check_quota, record_usage
 from ...chat_pipeline.usage import TokenUsage
@@ -246,7 +247,7 @@ class ChatService(BaseService):
                     # Model chỉ gọi tool vẽ sơ đồ mà quên trả lời → dùng câu xác nhận
                     # mặc định, stream luôn cho FE (live + lịch sử khớp nhau).
                     answer = (
-                        "Mình đã vẽ sơ đồ tư duy cho cuộc trò chuyện này — "
+                        "Mình đã vẽ sơ đồ tư duy theo yêu cầu của bạn — "
                         "bạn xem ở phần sơ đồ nhé."
                     )
                     # Append vào answer_parts để nhánh except (mark_error) cũng giữ được
@@ -258,14 +259,18 @@ class ChatService(BaseService):
                     raise RuntimeError("ADK agent không trả về câu trả lời")
 
             # Sơ đồ tư duy: sinh THEO YÊU CẦU sau khi đã có câu trả lời (token cộng vào
-            # lượt qua `token_usage`). Fail-safe — lỗi sinh sơ đồ KHÔNG làm hỏng câu trả
+            # lượt qua `token_usage`). Sinh 1 LẦN (giữ thinking) — phát `mindmap_pending`
+            # trước để FE hiện loading trong lúc model nghĩ, rồi `mindmap` mang sơ đồ trọn
+            # vẹn (FE tự render ra từ từ). Fail-safe — lỗi sinh sơ đồ KHÔNG làm hỏng câu trả
             # lời đã xong (chỉ là thiếu sơ đồ). Phát SAU mẩu trả lời cuối, TRƯỚC `done`.
             mind_map = None
             if emit.mindmap_requested and chat_config.mindmap_enabled:
+                yield mindmap_pending_event()
                 mind_map = self._generate_mind_map_safe(
                     history,
                     dto.question,
                     answer,
+                    emit.mindmap_content,
                     emit.mindmap_focus,
                     chat_config,
                     token_usage,
@@ -341,19 +346,27 @@ class ChatService(BaseService):
         history: list[types.Content],
         question: str,
         answer: str,
+        content: str,
         focus: str,
         chat_config: ChatConfig,
         token_usage: TokenUsage,
     ) -> dict | None:
         """Sinh sơ đồ tư duy (FAIL-SAFE) + cộng token vào lượt. Lỗi → None.
 
+        Nguồn sinh sơ đồ là PHẠM VI agent đã chọn (`content` — đúng điều user yêu cầu).
+        Chỉ khi agent để trống mới fallback về transcript cả hội thoại (yêu cầu kiểu
+        "vẽ sơ đồ cả cuộc trò chuyện"). Tránh tóm tắt mù cả hội thoại → sai phạm vi.
+
         Gọi Gemini structured-output là 1 lần gọi LLM RIÊNG (ADK không đếm) → cộng tay
-        `usage` vào `token_usage` để tính đúng hạn mức (record_usage ở `finally`).
+        `usage` vào `token_usage` để tính đúng hạn mức (record_usage ở `finally`). Trả
+        sơ đồ TRỌN VẸN 1 lần — FE render ra từ từ (xem `MindMapCanvas.vue`).
         """
         try:
-            transcript = ChatService._build_transcript(history, question, answer)
+            source = content.strip() if content else ""
+            if not source:
+                source = ChatService._build_transcript(history, question, answer)
             mind_map, usage = generate_mind_map(
-                transcript, focus, chat_config.mindmap_model
+                source, focus, chat_config.mindmap_model
             )
             token_usage.add(usage)  # add() bỏ qua nếu usage None.
             return mind_map

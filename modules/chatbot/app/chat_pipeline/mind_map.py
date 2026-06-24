@@ -2,9 +2,11 @@
 
 Hai phần:
   1. `generate_mind_map()` — gọi Gemini structured-output (`response_schema`) để biến
-     transcript hội thoại thành CÂY mind map dạng **node phẳng**: mỗi node trỏ cha
-     qua `parent_id`, KHÔNG lồng đệ quy → né giới hạn độ sâu (~5 cấp) và bug schema
-     đệ quy (`$ref`/RecursionError) của Gemini. FE dựng lại cây từ `parent_id`.
+     NỘI DUNG NGUỒN (do agent chọn qua tool `create_mind_map`, đúng phạm vi user yêu
+     cầu; fallback transcript cả hội thoại nếu agent để trống) thành CÂY mind map dạng
+     **node phẳng**: mỗi node trỏ cha qua `parent_id`, KHÔNG lồng đệ quy → né giới hạn
+     độ sâu (~5 cấp) và bug schema đệ quy (`$ref`/RecursionError) của Gemini. FE dựng
+     lại cây từ `parent_id`.
   2. `normalize_mind_map()` — ANTI-CORRUPTION LAYER (mirror `citations.py`): whitelist
      field, ép kiểu, chặn kích thước, đảm bảo `parent_id` hợp lệ + không vòng lặp
      TRƯỚC khi đẩy ra SSE / lưu `chat_messages.mind_map`.
@@ -45,6 +47,14 @@ MINDMAP_RESPONSE_SCHEMA = types.Schema(
                     "label": types.Schema(type=types.Type.STRING),
                     "notes": types.Schema(type=types.Type.STRING, nullable=True),
                     "link": types.Schema(type=types.Type.STRING, nullable=True),
+                    # Hướng toả của NHÁNH CẤP 1 (parent_id=null): "left" | "right".
+                    # LLM tự quyết để cân bằng sơ đồ hai phía; node sâu hơn để null
+                    # (FE cho theo phía của nhánh gốc). Xem normalize_mind_map.
+                    "direction": types.Schema(
+                        type=types.Type.STRING,
+                        nullable=True,
+                        enum=["left", "right"],
+                    ),
                 },
                 required=["id", "label"],
             ),
@@ -55,14 +65,18 @@ MINDMAP_RESPONSE_SCHEMA = types.Schema(
 
 
 def generate_mind_map(
-    conversation_text: str, focus: str, model: str
+    source_text: str, focus: str, model: str
 ) -> tuple[dict[str, Any] | None, Any]:
-    """Transcript hội thoại → `(mind_map đã chuẩn hoá | None, usage_metadata | None)`.
+    """Nội dung nguồn → `(mind_map đã chuẩn hoá | None, usage_metadata | None)`.
+
+    `source_text` là PHẠM VI sơ đồ do agent chọn qua tool `create_mind_map` (đúng điều
+    user yêu cầu) — có thể là câu trả lời, ý chính 1 chủ đề, hoặc transcript cả hội
+    thoại (fallback). Sơ đồ bám ĐÚNG nội dung này, không tự thêm ngoài.
 
     KHÔNG raise cho lỗi parse JSON (trả None + usage để vẫn tính token); lỗi gọi Gemini
     để PROPAGATE cho caller tự fail-safe (xem `chat_service._generate_mind_map_safe`).
     """
-    prompt = _build_prompt(conversation_text, focus)
+    prompt = _build_prompt(source_text, focus)
     raw_text, usage = GeminiClient().generate_json(
         [prompt], model=model, response_schema=MINDMAP_RESPONSE_SCHEMA
     )
@@ -75,26 +89,31 @@ def generate_mind_map(
     return normalize_mind_map(data), usage
 
 
-def _build_prompt(conversation_text: str, focus: str) -> str:
-    """Prompt sinh sơ đồ — grounded vào hội thoại, cùng ngôn ngữ, node ngắn gọn."""
+def _build_prompt(source_text: str, focus: str) -> str:
+    """Prompt sinh sơ đồ — grounded vào ĐÚNG nội dung nguồn, cùng ngôn ngữ, node ngắn gọn."""
     focus_line = (
         f"- Center the mind map on this focus: {focus}\n" if focus else ""
     )
     return (
-        "Build a MIND MAP (so do tu duy) that summarizes the conversation below "
-        "between a user and an AI assistant.\n"
+        "Build a MIND MAP (so do tu duy) that organizes the CONTENT below into a clear "
+        "hierarchy. The content is the exact material the user asked to visualize.\n"
         "Rules:\n"
-        "- Use ONLY information that appears in the conversation. Do NOT add outside "
-        "knowledge or invent details.\n"
-        "- Write all labels and notes in the SAME language as the conversation.\n"
+        "- Use ONLY information that appears in the content below. Do NOT add outside "
+        "knowledge, do NOT invent details, and do NOT pull in unrelated topics.\n"
+        "- Write all labels and notes in the SAME language as the content.\n"
         "- Keep `label` short (a few words); put any longer detail in `notes`.\n"
         "- Build a hierarchy: a root `title`, then branches linked by `parent_id` "
         "(use null for top-level branches). Every `id` must be unique.\n"
+        "- LAYOUT: the map is drawn around a CENTER root with branches on BOTH sides. "
+        "For each TOP-LEVEL branch (a node whose `parent_id` is null), set `direction` "
+        "to \"left\" or \"right\" so the two sides are roughly balanced (about half the "
+        "branches on each side) and related branches sit on the same side. For all "
+        "deeper nodes, leave `direction` null (they follow their branch's side).\n"
         "- Aim for 15-40 nodes, at most 4 levels deep. `notes`/`link` are optional "
         "(use null when not needed).\n"
         f"{focus_line}"
-        "\nConversation:\n"
-        f"{conversation_text}"
+        "\nContent:\n"
+        f"{source_text}"
     )
 
 
@@ -130,6 +149,7 @@ def normalize_mind_map(raw: Any) -> dict[str, Any] | None:
                 "label": label,
                 "notes": _opt_str(item.get("notes"), _MAX_NOTES),
                 "link": _opt_str(item.get("link")),
+                "direction": _opt_dir(item.get("direction")),
             }
         )
         if len(nodes) >= _MAX_NODES:
@@ -138,6 +158,7 @@ def normalize_mind_map(raw: Any) -> dict[str, Any] | None:
         return None
 
     _fix_parents(nodes)
+    _fix_directions(nodes)
     return {"title": title, "nodes": nodes}
 
 
@@ -161,9 +182,41 @@ def _fix_parents(nodes: list[dict[str, Any]]) -> None:
             cursor = by_id[parent_id]
 
 
+def _fix_directions(nodes: list[dict[str, Any]]) -> None:
+    """Chuẩn hoá `direction` TẠI CHỖ (gọi SAU `_fix_parents` để biết đúng nhánh gốc).
+
+    - CHỈ nhánh cấp 1 (`parent_id is None`) mới mang hướng; node sâu hơn → None
+      (FE cho theo phía của nhánh gốc).
+    - Nhánh cấp 1 thiếu hướng hợp lệ → tự cân bằng: gán xen kẽ left/right, ưu tiên
+      phía đang ít hơn để hai bên gần đều (LLM gán được bao nhiêu thì tôn trọng bấy nhiêu).
+    """
+    counts = {"left": 0, "right": 0}
+    pending: list[dict[str, Any]] = []
+    for node in nodes:
+        if node["parent_id"] is not None:
+            node["direction"] = None
+            continue
+        direction = node["direction"]
+        if direction in counts:
+            counts[direction] += 1
+        else:
+            pending.append(node)  # gán sau để cân theo số đã có.
+    for node in pending:
+        side = "left" if counts["left"] <= counts["right"] else "right"
+        node["direction"] = side
+        counts[side] += 1
+
+
 def _opt_str(value: Any, maxlen: int = _MAX_LABEL) -> str | None:
     """Chuỗi tuỳ chọn đã strip + cắt độ dài; rỗng/None → None."""
     if value is None:
         return None
     text = str(value).strip()
     return text[:maxlen] if text else None
+
+
+def _opt_dir(value: Any) -> str | None:
+    """Hướng nhánh hợp lệ ("left"/"right") hoặc None (mọi giá trị khác)."""
+    if isinstance(value, str) and value.strip().lower() in ("left", "right"):
+        return value.strip().lower()
+    return None

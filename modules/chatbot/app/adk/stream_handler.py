@@ -4,7 +4,8 @@ Mỗi `process(event)` yield 0..n `StreamChunk`, phân biệt qua `kind`:
   - "text"      → `chunk.text`       — mẩu câu trả lời (stream dần)
   - "thinking"  → `chunk.text`       — suy luận (nếu model bật thoughts)
   - "citations" → `chunk.citations`  — nguồn RAG, lấy từ function_response
-  - "mindmap"   → `chunk.focus`      — tín hiệu user yêu cầu vẽ sơ đồ (tool create_mind_map)
+  - "mindmap"   → `chunk.content`/`chunk.focus` — tín hiệu user yêu cầu vẽ sơ đồ + nội
+                    dung agent chọn để vẽ (tool create_mind_map)
 
 ChatService dịch các kind này sang event SSE (delta / thinking / citations); riêng
 "mindmap" chỉ là TÍN HIỆU — sơ đồ được sinh & phát sau lượt trả lời (chat_service).
@@ -39,7 +40,10 @@ class StreamChunk:
     kind: Literal["text", "thinking", "citations", "mindmap"]
     text: str = ""
     citations: list[dict[str, Any]] = field(default_factory=list)
-    # Chỉ có nghĩa với kind="mindmap": chủ đề user muốn tập trung ("" = cả hội thoại).
+    # Chỉ có nghĩa với kind="mindmap":
+    #   - `content`: nội dung agent chọn để vẽ sơ đồ ("" = fallback cả hội thoại).
+    #   - `focus`: chủ đề user muốn tập trung (dùng cho tiêu đề/nhấn mạnh).
+    content: str = ""
     focus: str = ""
 
 
@@ -89,8 +93,10 @@ class ADKStreamHandler:
                 yield StreamChunk(kind="citations", citations=citations)
         elif func_resp.name == MINDMAP_TOOL_NAME:
             response = func_resp.response
-            focus = str(response.get("focus") or "") if isinstance(response, dict) else ""
-            yield StreamChunk(kind="mindmap", focus=focus)
+            is_dict = isinstance(response, dict)
+            content = str(response.get("content") or "") if is_dict else ""
+            focus = str(response.get("focus") or "") if is_dict else ""
+            yield StreamChunk(kind="mindmap", content=content, focus=focus)
 
     @staticmethod
     def _extract_citations(response: Any) -> list[dict[str, Any]]:

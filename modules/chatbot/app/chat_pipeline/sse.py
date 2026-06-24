@@ -38,12 +38,14 @@ class EmitResult:
     """Kết quả phụ sau khi điều phối stream — caller dùng để lưu message + sinh sơ đồ.
 
     `citations` là nguồn RAG cuối cùng (lưu `chat_messages.citations`). `mindmap_*` cho
-    biết user có yêu cầu vẽ sơ đồ trong lượt này không (qua tool `create_mind_map`) +
-    chủ đề tập trung — chat_service sinh sơ đồ SAU khi có câu trả lời.
+    biết user có yêu cầu vẽ sơ đồ trong lượt này không (qua tool `create_mind_map`),
+    NỘI DUNG agent chọn để vẽ (`mindmap_content`) + chủ đề tập trung (`mindmap_focus`)
+    — chat_service sinh sơ đồ từ nội dung này SAU khi có câu trả lời.
     """
 
     citations: list[dict[str, Any]] = field(default_factory=list)
     mindmap_requested: bool = False
+    mindmap_content: str = ""
     mindmap_focus: str = ""
 
 
@@ -81,11 +83,22 @@ def citations_event(citations: list[dict[str, Any]]) -> str:
     return _sse({"type": "citations", "citations": citations})
 
 
+def mindmap_pending_event() -> str:
+    """Báo FE: sơ đồ tư duy ĐANG được tạo (model có thể suy nghĩ vài giây) → FE hiện
+
+    loading phần sơ đồ. Phát SAU mẩu trả lời cuối, TRƯỚC khi gọi LLM sinh sơ đồ; sau đó
+    `mindmap_event` mang sơ đồ trọn vẹn về.
+    """
+    return _sse({"type": "mindmap_pending"})
+
+
 def mindmap_event(mind_map: dict[str, Any]) -> str:
     """Sơ đồ tư duy (mind map) trọn gói — phát SAU mẩu trả lời cuối, TRƯỚC `done`.
 
-    `mind_map`: {title, nodes: [{id, parent_id, label, notes, link}, ...]} (node phẳng,
-    đã qua `mind_map.normalize_mind_map`). FE dựng cây từ `parent_id` rồi render (markmap).
+    `mind_map`: {title, nodes: [{id, parent_id, label, notes, link, direction}, ...]}
+    (node phẳng, đã qua `mind_map.normalize_mind_map`). `direction` ("left"/"right") chỉ
+    có ở nhánh cấp 1 (node sâu hơn = null, theo phía nhánh gốc) — FE dựng cây từ
+    `parent_id` rồi vẽ HAI PHÍA quanh tâm theo `direction`.
     """
     return _sse({"type": "mindmap", "mind_map": mind_map})
 
@@ -145,6 +158,7 @@ def emit_chat_events(
     """
     citations: list[dict[str, Any]] = []
     mindmap_requested = False
+    mindmap_content = ""
     mindmap_focus = ""
     meta_sent = False
 
@@ -179,6 +193,7 @@ def emit_chat_events(
                 yield _meta()
                 meta_sent = True
             mindmap_requested = True
+            mindmap_content = out.content or mindmap_content
             mindmap_focus = out.focus or mindmap_focus
 
     # Giữ contract "meta đứng đầu" KỂ CẢ khi stream không có chunk nào (agent im lặng):
@@ -189,5 +204,6 @@ def emit_chat_events(
     return EmitResult(
         citations=citations,
         mindmap_requested=mindmap_requested,
+        mindmap_content=mindmap_content,
         mindmap_focus=mindmap_focus,
     )
