@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import math
 
-from modules.base.clients.gemini_client import GeminiClient
+from .embedding_provider import get_embedding_client
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ def embed_chunks(
     if not chunks:
         return []
 
-    client = GeminiClient()
+    client = get_embedding_client()
     results: list[tuple[str, list[float]]] = []
 
     for start in range(0, len(chunks), _BATCH_SIZE):
@@ -85,7 +85,7 @@ def embed_query(
         return None
 
     try:
-        vectors = GeminiClient().embed([text], expected_dims, _TASK_TYPE_QUERY)
+        vectors = get_embedding_client().embed([text], expected_dims, _TASK_TYPE_QUERY)
     except Exception:
         # Gọi Gemini lỗi (mạng/timeout/auth/rate-limit) → None để caller fallback
         # (chỉ BM25 / bỏ LTM), không làm hỏng cả truy hồi (khớp contract docstring).

@@ -71,6 +71,21 @@ services:
     networks:
       - aio-net
 
+  # Ollama — LLM + embedding local (chỉ cần khi LLM_PROVIDER/EMBEDDING_PROVIDER=ollama).
+  # Thuộc profile `ollama` — KHÔNG chạy với `docker compose up` thường (mặc định provider=gemini).
+  # Bật:  docker compose -f docker/docker-compose.yml --profile ollama up -d
+  # Sau khi up, pull model:  docker compose exec ollama ollama pull qwen2.5
+  #                          docker compose exec ollama ollama pull nomic-embed-text
+  # (Chạy Ollama trên host → bỏ service, đặt OLLAMA_API_BASE=http://host.docker.internal:11434.)
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    profiles: ["ollama"]
+    volumes:
+      - ollama-data:/root/.ollama   # cache model qua các lần down/up
+    networks:
+      - aio-net
+
   # --- LightRAG / Knowledge graph (chỉ cần khi LIGHTRAG_ENABLED=true) ---
   # Thuộc profile `lightrag` — KHÔNG chạy với `docker compose up` thường.
   # Bật:  docker compose -f docker/docker-compose.yml --profile lightrag up -d
@@ -110,5 +125,6 @@ networks:
 
 volumes:
   opensearch-data:
+  ollama-data:
   postgres-data:
   neo4j-data:
