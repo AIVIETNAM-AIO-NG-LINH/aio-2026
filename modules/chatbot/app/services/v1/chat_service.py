@@ -85,25 +85,28 @@ class ChatService(BaseService):
         # tránh giữ DB lock trong lúc gọi HTTP sang api-aio). KHÔNG tạo message mồ côi
         # khi bị chặn. Fail-CLOSED: không xác nhận được hạn mức → chặn 503 (khác hẳn
         # "hết hạn mức" 429 để FE xử lý đúng: 503 cho retry, 429 báo hết quota).
-        try:
-            allowed = check_quota(dto.user_id)
-        except QuotaUnavailable:
-            self.exception(
-                translate(
-                    "Hiện chưa kiểm tra được hạn mức chat. Vui lòng thử lại sau.",
-                    ChatbotCatalog.TOKEN_QUOTA_UNAVAILABLE,
-                ),
-                http_status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-        if not allowed:
-            self.exception(
-                translate(
-                    "Bạn đã dùng hết hạn mức token chat trong hôm nay. "
-                    "Vui lòng thử lại vào ngày mai.",
-                    ChatbotCatalog.TOKEN_QUOTA_EXCEEDED,
-                ),
-                http_status.HTTP_429_TOO_MANY_REQUESTS,
-            )
+        # Ollama là LLM local (miễn phí) → KHÔNG tính hạn mức, bỏ qua check (khớp bỏ
+        # record_usage ở stream()).
+        if ChatConfig.from_env().llm_provider != "ollama":
+            try:
+                allowed = check_quota(dto.user_id)
+            except QuotaUnavailable:
+                self.exception(
+                    translate(
+                        "Hiện chưa kiểm tra được hạn mức chat. Vui lòng thử lại sau.",
+                        ChatbotCatalog.TOKEN_QUOTA_UNAVAILABLE,
+                    ),
+                    http_status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            if not allowed:
+                self.exception(
+                    translate(
+                        "Bạn đã dùng hết hạn mức token chat trong hôm nay. "
+                        "Vui lòng thử lại vào ngày mai.",
+                        ChatbotCatalog.TOKEN_QUOTA_EXCEEDED,
+                    ),
+                    http_status.HTTP_429_TOO_MANY_REQUESTS,
+                )
 
         with transaction.atomic():
             conversation = self._resolve_conversation(dto)
@@ -299,7 +302,9 @@ class ChatService(BaseService):
             # Ghi nhận token thực đã tiêu về api-aio (cộng hạn mức ngày). Đặt ở finally
             # để token vẫn được tính kể cả khi lỗi giữa chừng (LLM đã chạy là đã tốn).
             # Fail-safe sẵn trong record_usage; bỏ qua nếu chưa tiêu token nào.
-            record_usage(int(conversation.user_id), token_usage.total_tokens)
+            # Ollama là LLM local (miễn phí) → KHÔNG tính hạn mức (khớp bỏ check ở prepare()).
+            if chat_config.llm_provider != "ollama":
+                record_usage(int(conversation.user_id), token_usage.total_tokens)
             # InMemorySessionService giữ session mãi → PHẢI xoá sau mỗi lượt (tránh rò bộ nhớ).
             if session is not None:
                 self._delete_session_safe(session_service, user_id, session.id)

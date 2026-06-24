@@ -1,0 +1,64 @@
+# =============================================================================
+# ai-aio — STACK OLLAMA (LLM + embedding local, độc lập).
+# Chỉ cần khi LLM_PROVIDER/EMBEDDING_PROVIDER=ollama (mặc định .env là gemini).
+#
+# Tách riêng khỏi docker-compose.yml để bật/tắt độc lập (model nặng vài GB,
+# không phải lúc nào cũng cần). Cùng mạng `aio-net` nên web/worker vẫn gọi tới
+# qua tên service `ollama` → khớp OLLAMA_API_BASE=http://ollama:11434 trong .env.
+#
+# Yêu cầu: đã `docker network create aio-net` (hoặc đã up data-aio/nginx-aio TRƯỚC).
+#
+# Usage (từ repo root):
+#   docker compose -f docker/docker-compose.ollama.yml up -d
+# Pull model (lần đầu, lưu vào volume nên giữ qua down/up):
+#   docker compose -f docker/docker-compose.ollama.yml exec ollama ollama pull qwen2.5
+#   docker compose -f docker/docker-compose.ollama.yml exec ollama ollama pull nomic-embed-text
+# Tắt:
+#   docker compose -f docker/docker-compose.ollama.yml down
+#
+# (Chạy Ollama trên host thay vì container → bỏ stack này,
+#  đặt OLLAMA_API_BASE=http://host.docker.internal:11434.)
+#
+# Project name riêng (KHÔNG dùng `ai-aio`) → vòng đời độc lập, tránh cảnh báo
+# orphan khi up/down lệch nhịp với stack web/worker. DNS qua aio-net vẫn hoạt
+# động xuyên project (tên service `ollama` là network alias trên aio-net).
+name: ai-aio-ollama
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-aio-ollama
+    restart: unless-stopped
+    # Bind loopback host để pull/test từ host (vd curl http://127.0.0.1:11434).
+    # web/worker trong container KHÔNG cần port này — chúng gọi qua aio-net.
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama   # cache model qua các lần down/up
+    networks:
+      - aio-net
+    healthcheck:
+      # `ollama list` chỉ chạy được khi server đã sẵn sàng.
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    # --- GPU NVIDIA (tuỳ chọn) ---
+    # Bỏ comment nếu host có GPU + nvidia-container-toolkit (nhanh hơn nhiều).
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+networks:
+  # tạo trước 1 lần:  docker network create aio-net  (hoặc do data-aio/nginx-aio tạo)
+  aio-net:
+    external: true
+    name: aio-net
+
+volumes:
+  ollama-data:
