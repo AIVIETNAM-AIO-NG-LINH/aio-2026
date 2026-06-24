@@ -53,19 +53,27 @@ class ChatMessageRepository(
         )
 
     def mark_success(
-        self, message: ChatMessage, answer: str, citations: list[dict]
+        self,
+        message: ChatMessage,
+        answer: str,
+        citations: list[dict],
+        reasoning: str = "",
     ) -> None:
         """Chốt câu trả lời thành công — chỉ ghi các cột thay đổi (update_fields)."""
         message.content = answer
         message.citations = citations
+        message.reasoning = reasoning
         message.status = MessageStatus.SUCCESS
-        message.save(update_fields=["content", "citations", "status", "updated_at"])
+        message.save(
+            update_fields=["content", "citations", "reasoning", "status", "updated_at"]
+        )
 
-    def mark_error(self, message: ChatMessage, partial: str) -> None:
-        """Đánh dấu lượt lỗi — giữ phần text đã stream được (nếu có)."""
+    def mark_error(self, message: ChatMessage, partial: str, reasoning: str = "") -> None:
+        """Đánh dấu lượt lỗi — giữ phần text + reasoning đã stream được (nếu có)."""
         message.content = partial
+        message.reasoning = reasoning
         message.status = MessageStatus.ERROR
-        message.save(update_fields=["content", "status", "updated_at"])
+        message.save(update_fields=["content", "reasoning", "status", "updated_at"])
 
     def recent_success(
         self, conversation_id: int, exclude_ids: list[int], limit: int

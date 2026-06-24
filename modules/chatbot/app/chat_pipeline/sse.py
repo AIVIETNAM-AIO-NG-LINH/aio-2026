@@ -98,6 +98,7 @@ def emit_chat_events(
     conversation_id: int,
     message_id: int,
     answer_parts: list[str],
+    thinking_parts: list[str],
 ) -> Iterator[str]:
     """Điều phối THỨ TỰ event SSE từ luồng StreamChunk đã chuẩn hoá.
 
@@ -106,12 +107,13 @@ def emit_chat_events(
     citations, nếu agent trả thẳng thì meta có citations rỗng. Tool gọi lần 2+ phát
     thêm event `citations`.
 
-    `answer_parts` do CALLER sở hữu & truyền vào (generator chỉ append) — để khi lỗi
-    giữa chừng caller vẫn giữ được phần trả lời dở mà lưu (mark_error). Citations cuối
-    cùng trả về qua `yield from`:
+    `answer_parts` và `thinking_parts` do CALLER sở hữu & truyền vào (generator chỉ
+    append) — để caller lưu được câu trả lời + reasoning kể cả khi lỗi giữa chừng.
+    Citations cuối cùng trả về qua `yield from`:
 
         citations = yield from emit_chat_events(
-            chunks, conversation_id=..., message_id=..., answer_parts=answer_parts
+            chunks, conversation_id=..., message_id=...,
+            answer_parts=answer_parts, thinking_parts=thinking_parts,
         )
     """
     citations: list[dict[str, Any]] = []
@@ -139,6 +141,7 @@ def emit_chat_events(
             if not meta_sent:
                 yield _meta()
                 meta_sent = True
+            thinking_parts.append(out.text)
             yield thinking_event(out.text)
 
     return citations

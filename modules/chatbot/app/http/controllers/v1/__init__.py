@@ -1,7 +1,7 @@
 """Controllers v1 của module Chatbot — mỗi controller một file, re-export để urls import gọn.
 
 Hai nhóm endpoint:
-  - NỘI BỘ (`/api/internal/v1/chatbot/...`): ingest — gate bằng
+  - NỘI BỘ (`/api/internal/v1/chatbot/...`): ingest + purge — gate bằng
     `VerifyInternalToken` (chỉ service trong hệ AIO gọi).
   - CÔNG KHAI (`/api/v1/chatbot/...`): luồng chat của người dùng cuối, gộp 1 ViewSet.
     nginx đã verify token (qua api-aio) và forward danh tính user xuống header
@@ -11,8 +11,10 @@ Hai nhóm endpoint:
 
 from .chat_controller import ChatController
 from .ingest_document_controller import IngestDocumentController
+from .purge_document_controller import PurgeDocumentController
 
 __all__ = [
     "ChatController",
     "IngestDocumentController",
+    "PurgeDocumentController",
 ]

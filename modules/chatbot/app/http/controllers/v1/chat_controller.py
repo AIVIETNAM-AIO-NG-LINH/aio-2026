@@ -18,7 +18,7 @@ from rest_framework.viewsets import ViewSet
 from modules.base.singletons import CurrentUser
 from modules.base.supports import parse_pagination
 
-from ...requests.v1 import ChatRequest
+from ...requests.v1 import ChatRequest, UpdateConversationRequest
 from ....services import ChatService
 
 # Instance dùng chung cho cả ViewSet — ChatService stateless (không giữ state theo
@@ -79,13 +79,51 @@ class ChatController(ViewSet):
         return response
 
     def conversations(self, request: Request) -> Response:
-        """GET `/api/v1/chatbot/conversations` — danh sách hội thoại của user (phân trang)."""
+        """GET `/api/v1/chatbot/conversations` — danh sách hội thoại của user (phân trang).
+
+        Nhận thêm query `max_id` (tuỳ chọn) làm anchor cursor để phân trang ổn định:
+        FE bắt id lớn nhất ở lần load đầu rồi gửi kèm mọi trang sau, hội thoại mới
+        tạo không đẩy lệch trang. `max_id` sai kiểu/không phải số dương → bỏ qua.
+
+        Query `q` (tuỳ chọn) lọc theo từ khoá: khớp tiêu đề HOẶC nội dung tin nhắn;
+        rỗng/chỉ khoảng trắng → bỏ qua (trả list thường).
+        """
         user_id = CurrentUser().get_id()
         page, limit = parse_pagination(request)
-        return chat_service.list_conversations(user_id, page, limit)
+        max_id = self._parse_max_id(request)
+        q = (request.query_params.get("q") or "").strip() or None
+        return chat_service.list_conversations(user_id, page, limit, max_id, q)
+
+    @staticmethod
+    def _parse_max_id(request: Request) -> int | None:
+        """Đọc `max_id` từ query — số nguyên dương, ngược lại None (bỏ qua anchor)."""
+        try:
+            value = int(request.query_params.get("max_id", ""))
+        except (TypeError, ValueError):
+            return None
+        return value if value > 0 else None
 
     def messages(self, request: Request, conversation_id: int) -> Response:
         """GET `/api/v1/chatbot/conversations/<id>/messages` — tin nhắn của 1 hội thoại (phân trang)."""
         user_id = CurrentUser().get_id()
         page, limit = parse_pagination(request)
         return chat_service.list_messages(user_id, conversation_id, page, limit)
+
+    def rename(self, request: Request, conversation_id: int) -> Response:
+        """PATCH `/api/v1/chatbot/conversations/<id>` — đổi tiêu đề hội thoại.
+
+        Body `{ title }`. Sai shape → 422; không phải của user → 404 (đều shape V1).
+        """
+        user_id = CurrentUser().get_id()
+        form = UpdateConversationRequest(data=request.data)
+        form.is_valid(raise_exception=True)
+        dto = form.to_dto()
+        return chat_service.rename_conversation(user_id, conversation_id, dto.title)
+
+    def destroy(self, request: Request, conversation_id: int) -> Response:
+        """DELETE `/api/v1/chatbot/conversations/<id>` — xoá (mềm) hội thoại.
+
+        Không phải của user → 404 (shape V1).
+        """
+        user_id = CurrentUser().get_id()
+        return chat_service.delete_conversation(user_id, conversation_id)

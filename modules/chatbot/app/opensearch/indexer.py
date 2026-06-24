@@ -174,6 +174,45 @@ class OpenSearchIndexer(BaseOpenSearchClient):
         )
         return total
 
+    def delete_document(self, document_id: int) -> None:
+        """Xoá HẲN mọi parent + child của document_id khỏi rag-index (không giữ lại).
+
+        Dùng khi tài liệu bị gỡ khỏi kho (api-aio soft-delete bản ghi rồi báo
+        sang purge) — phải dọn sạch OpenSearch để chatbot KHÔNG còn truy hồi
+        được nội dung tài liệu đã xoá. Khác `_delete_stale` (giữ version mới khi
+        re-ingest), hàm này xoá TẤT CẢ version.
+
+        CHILD TRƯỚC PARENT như `_delete_stale`: child chỉ tìm lại được qua
+        has_parent theo document_id; xoá parent trước mà chết giữa chừng thì
+        child thành mồ côi không query lại được. `conflicts="proceed"` +
+        `ignore=[404]` để bỏ qua đua ghi/đua xoá và index/doc chưa tồn tại
+        (purge của tài liệu chưa kịp index xong là no-op an toàn).
+        """
+        children_query = {
+            "query": {
+                "has_parent": {
+                    "parent_type": PARENT_RELATION,
+                    "query": {"term": {"document_id": document_id}},
+                }
+            }
+        }
+        parents_query = {"query": {"term": {"document_id": document_id}}}
+        for op, query, refresh in (
+            ("purge child", children_query, True),
+            ("purge parent", parents_query, False),
+        ):
+            self._retry_transient(
+                op,
+                lambda q=query, r=refresh: self._client.delete_by_query(
+                    index=self.index,
+                    body=q,
+                    refresh=r,
+                    conflicts="proceed",
+                    ignore=[404],
+                ),
+            )
+        logger.info("[opensearch] document_id=%s đã purge khỏi rag-index", document_id)
+
     def _delete_stale(self, document_id: int, keep_parent_id: str) -> None:
         """Xoá mọi parent + child của document_id TRỪ version vừa ghi.
 

@@ -35,9 +35,18 @@ class ChatConversationRepositoryInterface(ABC):
 
     @abstractmethod
     def paginate_for_user(
-        self, user_id: int, page: int, limit: int
+        self,
+        user_id: int,
+        page: int,
+        limit: int,
+        max_id: int | None = None,
+        q: str | None = None,
     ) -> tuple[int, list[ChatConversation]]:
-        """`(total, items)` hội thoại của user, mới nhất trước."""
+        """`(total, items)` hội thoại của user, mới nhất trước.
+
+        `max_id` (tuỳ chọn) chốt anchor cursor: chỉ tính hội thoại có ``id <= max_id``.
+        `q` (tuỳ chọn) lọc theo từ khoá: khớp `title` HOẶC nội dung tin nhắn.
+        """
         ...
 
     @abstractmethod

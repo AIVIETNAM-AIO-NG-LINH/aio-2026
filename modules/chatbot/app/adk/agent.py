@@ -14,7 +14,7 @@ from google.genai import types
 
 from ..chat_pipeline.config import ChatConfig
 from .constants import ROOT_AGENT_NAME
-from .tools import search_knowledge_base, search_knowledge_graph
+from .tools import get_document_url, search_knowledge_base, search_knowledge_graph
 
 # Chỉ dẫn hệ thống — RAG grounded, có trích nguồn. Prompt viết TIẾNG ANH (model
 # bám instruction tốt hơn); câu trả lời vẫn theo ngôn ngữ của câu hỏi người dùng.
@@ -30,7 +30,12 @@ AGENT_INSTRUCTION = (
     "in the knowledge graph. CALL this for questions about HOW things relate — "
     "connections, dependencies, causes, or multi-hop reasoning across documents "
     "(e.g. 'how does X affect Y', 'what links A to B'). For a simple single-fact "
-    "lookup, prefer `search_knowledge_base`.\n\n"
+    "lookup, prefer `search_knowledge_base`.\n"
+    "- `get_document_url`: returns a public link (URL) to a source document file, given "
+    "its `media_id` (which you get from a `search_knowledge_base` result). CALL this "
+    "ONLY when you need to give the user a clickable link — they explicitly ask for the "
+    "file/link, or you want a citation they can open. Do NOT call it for normal answers "
+    "that don't need a link, and NEVER guess a media_id.\n\n"
     "## Answering rules (STRICT)\n"
     "- LANGUAGE: ALWAYS answer in the language of the user's LATEST message — "
     "regardless of the language of the documents, tool results, long-term memory "
@@ -55,6 +60,12 @@ AGENT_INSTRUCTION = (
     "- When you use information from a passage, cite it as (Source: <document name>, "
     "page <number>) when available, with the label in the same language as your "
     "answer (e.g. 'Nguồn' in Vietnamese).\n"
+    "- SOURCE LINK: when the user wants a link to a source (asks for the file/link, or a "
+    "clickable citation would clearly help), call `get_document_url` with the passage's "
+    "`media_id` to obtain the `url`, then render it as a Markdown link on the document "
+    "name, e.g. '[<document name>](<url>)'. Use the url EXACTLY as returned; NEVER invent, "
+    "guess, or modify a link, and do not output a link when the tool returns a null url. "
+    "Don't fetch links for answers that don't need them.\n"
     "- Answer directly, clearly and concisely; do NOT mention internal technical "
     "mechanisms (tools, vectors, OpenSearch, chunks, ...). Do NOT open with phrases "
     "like 'Based on the documents...'.\n"
@@ -108,5 +119,5 @@ def create_root_agent() -> Agent:
         instruction=AGENT_INSTRUCTION,
         planner=planner,
         generate_content_config=generate_content_config,
-        tools=[search_knowledge_base, search_knowledge_graph],
+        tools=[search_knowledge_base, get_document_url, search_knowledge_graph],
     )

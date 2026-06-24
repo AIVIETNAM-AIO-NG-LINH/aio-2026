@@ -10,7 +10,8 @@ Luồng (mỗi bước fail-safe, hỏng bước phụ không làm chết truy h
   3) Rerank cross-encoder QUA HTTP trên (query, chunk_text) → xếp lại; tắt/lỗi → giữ hybrid.
   4) Cắt top_k, trả JSON list {chunk_text, score, document_id, media_id, original_name, page}.
 
-Số trang được surface để caller/LLM trích "trang X". Đồng bộ (xử lý trong request) —
+Số trang được surface để caller/LLM trích "trang X". Link tải tài liệu KHÔNG gắn ở đây —
+là tool riêng `get_document_url` (LLM tự quyết gọi). Đồng bộ (xử lý trong request) —
 truy hồi nhanh, khác ingest chạy nền qua Celery.
 """
 
@@ -23,6 +24,10 @@ from ..rag.embedder import embed_query
 from ..rag.reranker_client import rerank
 
 logger = logging.getLogger(__name__)
+
+# Cảnh báo "đang chạy không có lá chắn chống bịa" chỉ phát 1 lần/process để không
+# flood log mỗi câu hỏi (reset khi worker/web restart — đủ loud để phát hiện).
+_NO_SHIELD_WARNED = False
 
 
 def search(
@@ -58,22 +63,50 @@ def search(
     # 3) Rerank theo query → xếp lại; tắt/lỗi → giữ hybrid.
     ranked = rerank(query, candidates, rerank_config)
 
-    # 3b) Lọc theo ngưỡng điểm liên quan — CHỈ khi rerank thực sự chạy (item có
-    # `rerank_score`; điểm RRF hybrid không cùng thang nên không áp ngưỡng cho nó,
-    # fail-safe). Câu hỏi ngoài phạm vi tài liệu → mọi chunk dưới ngưỡng bị loại →
-    # trả [] → agent từ chối ("không có trong tài liệu") thay vì ghép từ nhiễu.
+    # 3b) Lọc theo ngưỡng điểm liên quan để CHỐNG BỊA. Hai chế độ loại trừ nhau:
+    #   (a) rerank CHẠY (item có `rerank_score`) → lọc trên thang cross-encoder.
+    #   (b) rerank KHÔNG chạy + có sàn cosine → FALLBACK lọc trên `knn_score`
+    #       (điểm cosine kNN). Điểm RRF hybrid thuần thứ hạng nên KHÔNG áp ngưỡng.
+    # Câu hỏi ngoài phạm vi tài liệu → mọi chunk dưới ngưỡng bị loại → trả [] →
+    # agent từ chối ("không có trong tài liệu") thay vì ghép từ nhiễu.
     threshold = rerank_config.score_threshold
     reranked = any("rerank_score" in c for c in ranked)
     if threshold > 0 and reranked:
         kept = [c for c in ranked if c.get("rerank_score", 0.0) >= threshold]
         if len(kept) != len(ranked):
             logger.info(
-                "[retrieve] lọc ngưỡng %.3f: %d → %d chunk đạt",
+                "[retrieve] lọc ngưỡng rerank %.3f: %d → %d chunk đạt",
                 threshold,
                 len(ranked),
                 len(kept),
             )
         ranked = kept
+    elif retrieve_config.min_cosine > 0:
+        # (b) FALLBACK chống bịa: rerank không chạy → dùng sàn điểm cosine kNN.
+        # Chunk chỉ khớp BM25 (knn_score None) coi như 0 → bị loại (lexical trùng
+        # tình cờ không đủ làm nguồn khi không có tín hiệu ngữ nghĩa).
+        floor = retrieve_config.min_cosine
+        kept = [c for c in ranked if (c.get("knn_score") or 0.0) >= floor]
+        if len(kept) != len(ranked):
+            logger.info(
+                "[retrieve] fallback sàn cosine kNN %.3f: %d → %d chunk đạt",
+                floor,
+                len(ranked),
+                len(kept),
+            )
+        ranked = kept
+    elif rerank_config.enabled and not rerank_config.endpoint_url:
+        # An toàn vận hành (fail-loud): bật rerank nhưng THIẾU endpoint → đang truy
+        # hồi mà KHÔNG có lá chắn chống bịa nào. Cảnh báo (1 lần/process) để không
+        # âm thầm ship chế độ này — chính cái bẫy gây ra lỗ hổng ban đầu.
+        global _NO_SHIELD_WARNED
+        if not _NO_SHIELD_WARNED:
+            logger.warning(
+                "[retrieve] RERANK_ENABLED=true nhưng RERANK_ENDPOINT_URL rỗng — "
+                "truy hồi ĐANG KHÔNG lọc chống bịa. Đặt endpoint rerank, hoặc bật "
+                "HYBRID_MIN_COSINE để dùng cổng cosine dự phòng."
+            )
+            _NO_SHIELD_WARNED = True
 
     # 4) Cắt top_k, build payload trả về (số trang surface cho caller).
     items = [

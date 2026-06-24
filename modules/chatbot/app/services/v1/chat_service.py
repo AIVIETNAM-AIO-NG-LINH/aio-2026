@@ -153,6 +153,9 @@ class ChatService(BaseService):
         chat_config = ChatConfig.from_env()
 
         answer_parts: list[str] = []
+        # Reasoning (thoughts) gom song song answer — lưu vào message để FE dựng lại
+        # khối thinking khi mở lại hội thoại. Khai báo NGOÀI try như answer_parts.
+        thinking_parts: list[str] = []
         # Cộng dồn token cả lượt (qua mọi lần gọi LLM). Khai báo NGOÀI try để nhánh
         # except vẫn log được phần đã tiêu khi lỗi giữa chừng.
         token_usage = TokenUsage()
@@ -195,15 +198,19 @@ class ChatService(BaseService):
             handler = ADKStreamHandler()
 
             def _chunks() -> Iterator[StreamChunk]:
-                # Cộng dồn token TỪNG event (event cuối mỗi lần gọi LLM mang usage),
-                # rồi mới bóc thành StreamChunk — handler bỏ qua usage nên gom ở đây.
+                # Gom token rồi mới bóc thành StreamChunk (handler bỏ qua usage).
+                # CHỈ cộng usage ở event FINAL của mỗi lần gọi LLM (`partial` False/None):
+                # event partial (mẩu stream) mang `usage_metadata` CUMULATIVE — cộng cả
+                # partial sẽ đếm lặp, tổng phồng vài lần. Event final mang đúng tổng cả
+                # lần gọi đó, nên cộng các final = tổng cả lượt (qua mọi vòng tool).
                 for event in get_runner().run(
                     user_id=user_id,
                     session_id=session.id,
                     new_message=new_message,
                     run_config=RunConfig(streaming_mode=StreamingMode.SSE),
                 ):
-                    token_usage.add(event.usage_metadata)
+                    if not event.partial:
+                        token_usage.add(event.usage_metadata)
                     yield from handler.process(event)
 
             chunks = _chunks()
@@ -215,20 +222,24 @@ class ChatService(BaseService):
                 conversation_id=conversation.id,
                 message_id=assistant_message.id,
                 answer_parts=answer_parts,
+                thinking_parts=thinking_parts,
             )
             answer = "".join(answer_parts).strip()
+            reasoning = "".join(thinking_parts).strip()
 
             if not answer:
                 # Agent không trả về text (vd chỉ gọi tool rồi dừng) → coi là lỗi.
                 raise RuntimeError("ADK agent không trả về câu trả lời")
 
-            self.messages.mark_success(assistant_message, answer, citations)
+            self.messages.mark_success(assistant_message, answer, citations, reasoning)
             self._enqueue_background(conversation, dto.question, answer)
 
             yield done_event(assistant_message.id, token_usage.total_tokens)
         except Exception:
             logger.exception("[chat] lỗi khi sinh câu trả lời (conv=%s)", conversation.id)
-            self.messages.mark_error(assistant_message, "".join(answer_parts))
+            self.messages.mark_error(
+                assistant_message, "".join(answer_parts), "".join(thinking_parts).strip()
+            )
             yield error_event(
                 translate(
                     "Có lỗi khi tạo câu trả lời. Vui lòng thử lại.",
@@ -317,19 +328,76 @@ class ChatService(BaseService):
             )
 
     # --- API đọc lịch sử ---------------------------------------------------
-    def list_conversations(self, user_id: int, page: int, limit: int) -> Response:
+    def list_conversations(
+        self,
+        user_id: int,
+        page: int,
+        limit: int,
+        max_id: int | None = None,
+        q: str | None = None,
+    ) -> Response:
         """Danh sách hội thoại của user (mới nhất trước), có phân trang.
 
         Shape Fractal (khớp API list bên Laravel): `{data: [...], meta: {pagination}}`.
+        `max_id` chốt anchor cursor để FE phân trang ổn định (xem repository).
+        `q` (tuỳ chọn) lọc theo từ khoá: khớp tiêu đề HOẶC nội dung tin nhắn.
         """
         total, conversations = self.conversations.paginate_for_user(
-            user_id, page, limit
+            user_id, page, limit, max_id, q
         )
         data = TransformerService.paginator(
             TransformerService.make_paginator(conversations, total, limit, page),
             ConversationTransformer(),
         )
         return self.response_success(data)
+
+    def rename_conversation(
+        self, user_id: int, conversation_id: int, title: str
+    ) -> Response:
+        """Đổi tiêu đề một hội thoại của user; kiểm tra quyền sở hữu.
+
+        Trả về hội thoại sau khi cập nhật (shape `ConversationTransformer`, envelope
+        GA `{data: {...}}`). Không phải của user / không tồn tại → 404 shape V1.
+        """
+        conversation = self.conversations.find_owned(conversation_id, user_id)
+        if conversation is None:
+            self.not_found(
+                translate("Hội thoại không tồn tại", ChatbotCatalog.CONVERSATION_NOT_FOUND)
+            )
+
+        conversation = self.conversations.update_model(conversation, {"title": title})
+        # Khớp envelope Laravel V1 (xem DocumentService::reindex): bọc item trong
+        # key `data` + kèm `message` → FE nhận `{data: {data: {...}, message, success: 1}}`.
+        data = TransformerService.item(conversation, ConversationTransformer())
+        return self.response_success(
+            {
+                "data": data,
+                "message": translate(
+                    "Đổi tên hội thoại thành công", ChatbotCatalog.RENAME_SUCCESS
+                ),
+            }
+        )
+
+    def delete_conversation(self, user_id: int, conversation_id: int) -> Response:
+        """Xoá (mềm) một hội thoại của user; kiểm tra quyền sở hữu.
+
+        Soft delete (`deleted_at`) — message con vẫn còn trong DB nhưng hội thoại
+        biến mất khỏi list. Không phải của user / không tồn tại → 404 shape V1.
+        """
+        conversation = self.conversations.find_owned(conversation_id, user_id)
+        if conversation is None:
+            self.not_found(
+                translate("Hội thoại không tồn tại", ChatbotCatalog.CONVERSATION_NOT_FOUND)
+            )
+
+        self.conversations.delete_model(conversation)
+        return self.response_success(
+            {
+                "message": translate(
+                    "Đã xoá hội thoại", ChatbotCatalog.DELETE_SUCCESS
+                ),
+            }
+        )
 
     def list_messages(
         self, user_id: int, conversation_id: int, page: int, limit: int

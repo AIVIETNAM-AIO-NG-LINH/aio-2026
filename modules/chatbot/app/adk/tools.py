@@ -24,7 +24,8 @@ def search_knowledge_base(query: str, top_k: int = _DEFAULT_TOP_K) -> dict[str, 
 
     Use this whenever the user asks anything that may be answered by the organization's
     documents (policies, processes, products, reports, etc.). Returns the most relevant
-    text passages, each with its source document name and page number for citation.
+    text passages, each with its source document name, page number, and a `media_id`
+    (pass it to `get_document_url` if you need a clickable link to the file).
 
     Args:
         query: The natural-language search query (use the user's wording or a refined version).
@@ -46,6 +47,36 @@ def search_knowledge_base(query: str, top_k: int = _DEFAULT_TOP_K) -> dict[str, 
 
     logger.info("[adk-tool] search_knowledge_base query=%r → %d kết quả", query, len(chunks))
     return {"results": chunks}
+
+
+def get_document_url(media_id: int) -> dict[str, Any]:
+    """Get a public link (URL) to a source document file by its media_id.
+
+    Call this ONLY when you need to give the user a clickable link to a source — e.g.
+    the user explicitly asks for the file/link, or you want to cite a passage with a
+    link they can open. The `media_id` comes from a `search_knowledge_base` result; do
+    NOT guess it. Skip this tool for normal questions that don't need a link.
+
+    Args:
+        media_id: The media_id of the source document (from search_knowledge_base results).
+
+    Returns:
+        A dict {"media_id", "original_name", "url"}. `url` is a public link to the file,
+        or null if the document was not found or has no link. Use the url EXACTLY as
+        returned — never invent or alter it.
+    """
+    # Import trong hàm để tránh phụ thuộc vòng lúc nạp module agent.
+    from modules.chatbot.app.tools import document_link
+
+    fallback = {"media_id": media_id, "original_name": None, "url": None}
+    try:
+        result = document_link.get_url(media_id)
+    except Exception:
+        logger.exception("[adk-tool] get_document_url lỗi (media_id=%s)", media_id)
+        return fallback
+
+    logger.info("[adk-tool] get_document_url media_id=%s → %s", media_id, bool(result))
+    return result or fallback
 
 
 def search_knowledge_graph(query: str) -> dict[str, Any]:

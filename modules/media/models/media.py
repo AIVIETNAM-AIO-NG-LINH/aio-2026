@@ -6,8 +6,6 @@ và ghi). Không có tác vụ upload file ở đây — chỉ expose model + ac
 
 from __future__ import annotations
 
-from django.conf import settings
-from django.core.files.storage import default_storage
 from django.db import models
 
 from modules.base.models import SoftDeleteModel
@@ -66,15 +64,15 @@ class Media(SoftDeleteModel):
 
     @property
     def url(self) -> str | None:
-        """URL truy cập file: ghép `MEDIA_FOLDER` (settings) + `file_name` rồi hỏi
-        storage. Trả None nếu storage không hỗ trợ url hoặc lỗi resolve — caller tự
-        xử fallback."""
+        """URL công khai của file trên S3/object storage — dựng từ env `AWS_S3_*`
+        qua {@link S3Client.public_url} (cùng nguồn object key với lúc ingest đọc
+        file). Khớp link api-aio sinh ra. None nếu thiếu cấu hình S3 hoặc lỗi —
+        caller tự xử fallback."""
+        # Import cục bộ: tránh phụ thuộc boto3 lúc import model (public_url không
+        # kích hoạt boto3 client — chỉ ghép chuỗi).
+        from modules.base.clients.s3_client import S3Client
+
         try:
-            return default_storage.url(self._full_path())
+            return S3Client().public_url(self.file_name)
         except Exception:
             return None
-
-    def _full_path(self) -> str:
-        """Path đầy đủ trên disk: `MEDIA_FOLDER` + `file_name` (folder có thể rỗng)."""
-        folder = str(getattr(settings, "MEDIA_FOLDER", "media")).strip("/")
-        return self.file_name if folder == "" else f"{folder}/{self.file_name}"

@@ -140,16 +140,33 @@ class Retriever(BaseOpenSearchClient):
 
         BM25 trên `chunk_text` (luôn) + kNN trên `chunk_vector` (nếu có vector;
         vector None → chỉ BM25, fail-safe). Trả về list dict
-        {chunk_text, page, document_id, media_id, original_name, score}.
+        {chunk_text, page, document_id, media_id, original_name, score, knn_score}.
+        `knn_score` = điểm cosine kNN của child (None nếu chunk chỉ khớp BM25) —
+        caller dùng làm sàn chống bịa dự phòng khi rerank không chạy.
         """
         ranked_lists: list[list[dict[str, Any]]] = []
+        knn_scores: dict[str, float] = {}
         if query:
             ranked_lists.append(self._bm25_hits(query, top_n))
         if query_vector:
-            ranked_lists.append(self._knn_hits(query_vector, top_n))
+            knn_hits = self._knn_hits(query_vector, top_n)
+            # Giữ điểm cosine kNN (`_score`, thang cosinesimil) theo child_id: RRF chỉ
+            # dùng THỨ HẠNG nên điểm tuyệt đối này là tín hiệu liên quan duy nhất còn
+            # lại để áp sàn chống bịa khi rerank không chạy (xem knowledge_base).
+            knn_scores = {
+                str(hit.get("_id")): hit["_score"]
+                for hit in knn_hits
+                if hit.get("_score") is not None
+            }
+            ranked_lists.append(knn_hits)
 
         fused = self._fuse(ranked_lists, rrf_k, top_n)
         if not fused:
             logger.info("[retriever] hybrid search không có kết quả")
             return []
-        return self._attach_parents(fused)
+        enriched = self._attach_parents(fused)
+        # Gắn knn_score cho từng ứng viên (None nếu chunk chỉ khớp BM25, không nằm
+        # trong top kNN). `_attach_parents` giữ NGUYÊN thứ tự `fused` nên zip an toàn.
+        for candidate, fused_item in zip(enriched, fused):
+            candidate["knn_score"] = knn_scores.get(fused_item["child_id"])
+        return enriched

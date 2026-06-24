@@ -35,14 +35,18 @@ class ChatMessageRepositoryInterface(ABC):
 
     @abstractmethod
     def mark_success(
-        self, message: ChatMessage, answer: str, citations: list[dict]
+        self,
+        message: ChatMessage,
+        answer: str,
+        citations: list[dict],
+        reasoning: str = "",
     ) -> None:
         """Chốt câu trả lời thành công — chỉ ghi các cột thay đổi."""
         ...
 
     @abstractmethod
-    def mark_error(self, message: ChatMessage, partial: str) -> None:
-        """Đánh dấu lượt lỗi — giữ phần text đã stream được (nếu có)."""
+    def mark_error(self, message: ChatMessage, partial: str, reasoning: str = "") -> None:
+        """Đánh dấu lượt lỗi — giữ phần text + reasoning đã stream được (nếu có)."""
         ...
 
     @abstractmethod

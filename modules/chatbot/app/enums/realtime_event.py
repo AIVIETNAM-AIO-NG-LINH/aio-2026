@@ -12,7 +12,9 @@ from django.db import models
 class RealtimeEvent(models.TextChoices):
     """Các loại event realtime của chatbot.
 
-    DOCUMENT_PROGRESS — tiến độ ingest 1 tài liệu (status/indexed_percent) đổi.
+    DOCUMENT_PROGRESS  — tiến độ ingest 1 tài liệu (status/indexed_percent) đổi.
+    CONVERSATION_TITLE — tiêu đề hội thoại vừa được sinh nền xong (đẩy riêng 1 user).
     """
 
     DOCUMENT_PROGRESS = "chatbot.document.progress"
+    CONVERSATION_TITLE = "chatbot.conversation.title"

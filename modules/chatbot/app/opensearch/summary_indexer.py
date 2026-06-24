@@ -118,3 +118,22 @@ class SummaryIndexer(BaseOpenSearchClient):
             "[summary] document_id=%s đã index tóm tắt (%d ký tự)", document_id, len(summary)
         )
         return True
+
+    # --- Xoá document ------------------------------------------------------
+    def delete_summary(self, document_id: int) -> None:
+        """Xoá doc tóm tắt của tài liệu (id = str(document_id)) khỏi summary index.
+
+        Gọi khi tài liệu bị gỡ khỏi kho. `ignore=[404]` bỏ qua cả khi doc chưa
+        từng index (summary fail-safe nên có thể chưa có) lẫn khi index chưa
+        tồn tại. Caller (task purge) bọc try/except — hàm có thể raise.
+        """
+        self._retry_transient(
+            "purge summary",
+            lambda: self._client.delete(
+                index=self.summary_index,
+                id=str(document_id),
+                refresh=True,
+                ignore=[404],
+            ),
+        )
+        logger.info("[summary] document_id=%s đã purge khỏi summary index", document_id)

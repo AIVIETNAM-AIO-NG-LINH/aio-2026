@@ -84,12 +84,21 @@ class RetrieveConfig:
     top_k: int   # số chunk trả về cuối cùng (sau rerank).
     top_n: int   # số ứng viên lấy từ hybrid search để đưa vào rerank.
     rrf_k: int   # hằng số RRF (Reciprocal Rank Fusion) khi hợp nhất BM25 + kNN.
+    # Sàn điểm cosine kNN — CỔNG CHỐNG BỊA DỰ PHÒNG khi rerank KHÔNG chạy (tắt /
+    # thiếu endpoint / lỗi). Chunk có điểm cosine kNN dưới sàn bị loại → câu hỏi
+    # ngoài phạm vi tài liệu trả [] và bot từ chối thay vì "ghép" từ nhiễu. 0 =
+    # tắt (mặc định — giữ nguyên hành vi cũ, không lọc khi không có rerank). Đọc từ
+    # env để tune NÓNG ở prod, không cần deploy lại; thang `_score` của OpenSearch
+    # (cosinesimil) tuỳ dữ liệu nên PHẢI hiệu chỉnh bằng truy vấn thật — xem log
+    # `knn_score` trong knowledge_base để chọn sàn nằm giữa in-scope và out-of-scope.
+    min_cosine: float
 
     @classmethod
     def from_env(cls) -> "RetrieveConfig":
-        # Fix cứng trong code (không đọc env) — chỉnh trực tiếp tại đây khi cần.
+        # top_k/top_n/rrf_k fix cứng trong code; min_cosine đọc env (safety knob tune nóng).
         return cls(
             top_k=5,    # số chunk trả về cuối cùng (sau rerank).
             top_n=30,   # số ứng viên lấy từ hybrid search để đưa vào rerank.
             rrf_k=60,   # hằng số RRF khi hợp nhất BM25 + kNN.
+            min_cosine=_env_float("HYBRID_MIN_COSINE", default=0.0),
         )
