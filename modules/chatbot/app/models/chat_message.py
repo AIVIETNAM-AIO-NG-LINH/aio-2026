@@ -10,6 +10,10 @@ thị "trích từ tài liệu X, trang Y".
 
 `reasoning` lưu nội dung "suy nghĩ" (reasoning/thoughts) model phát trước câu trả
 lời — để FE dựng lại khối thinking khi mở lại hội thoại (rỗng nếu model không nghĩ).
+
+`mind_map` lưu sơ đồ tư duy (mind map) sinh THEO YÊU CẦU cho lượt đó — JSON node
+phẳng `{title, nodes: [{id, parent_id, label, notes, link}, ...]}` — null nếu lượt
+này người dùng không yêu cầu vẽ sơ đồ. FE render bằng markmap khi mở lại hội thoại.
 """
 
 from __future__ import annotations
@@ -38,6 +42,8 @@ class ChatMessage(SoftDeleteModel):
     reasoning = models.TextField(blank=True, default="")
     # Nguồn trích dẫn (chunk RAG) cho message ASSISTANT — null với message USER.
     citations = models.JSONField(null=True, blank=True, default=None)
+    # Sơ đồ tư duy (mind map) sinh theo yêu cầu — {title, nodes:[...]} hoặc null.
+    mind_map = models.JSONField(null=True, blank=True, default=None)
     status = models.CharField(
         max_length=20,
         choices=MessageStatus.choices,

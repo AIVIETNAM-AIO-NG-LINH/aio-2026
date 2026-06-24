@@ -20,6 +20,8 @@ class MessageTransformer(TransformerAbstract):
             # Suy nghĩ (reasoning) để FE dựng lại khối thinking; "" nếu không có.
             "reasoning": row.reasoning or "",
             "citations": row.citations,
+            # Sơ đồ tư duy (mind map) — null nếu lượt này không vẽ; FE render bằng markmap.
+            "mind_map": row.mind_map,
             "status": row.status,
             "created_at": row.fmt_dt(row.created_at),
         }

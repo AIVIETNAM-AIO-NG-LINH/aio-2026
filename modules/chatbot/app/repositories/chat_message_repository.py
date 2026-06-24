@@ -58,14 +58,27 @@ class ChatMessageRepository(
         answer: str,
         citations: list[dict],
         reasoning: str = "",
+        mind_map: dict | None = None,
     ) -> None:
-        """Chốt câu trả lời thành công — chỉ ghi các cột thay đổi (update_fields)."""
+        """Chốt câu trả lời thành công — chỉ ghi các cột thay đổi (update_fields).
+
+        `mind_map`: JSON sơ đồ tư duy nếu lượt này có vẽ (None nếu không) — nhớ giữ
+        trong `update_fields`, thiếu là ghi bị âm thầm bỏ qua.
+        """
         message.content = answer
         message.citations = citations
         message.reasoning = reasoning
+        message.mind_map = mind_map
         message.status = MessageStatus.SUCCESS
         message.save(
-            update_fields=["content", "citations", "reasoning", "status", "updated_at"]
+            update_fields=[
+                "content",
+                "citations",
+                "reasoning",
+                "mind_map",
+                "status",
+                "updated_at",
+            ]
         )
 
     def mark_error(self, message: ChatMessage, partial: str, reasoning: str = "") -> None:

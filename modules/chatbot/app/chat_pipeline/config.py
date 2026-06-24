@@ -51,6 +51,10 @@ class ChatConfig:
     attached_files_max: int        # trần số file đính kèm mỗi lượt (chống lạm dụng).
     gemini_file_ttl_hours: int     # TTL Files API (~48h) — quá hạn thì re-push.
 
+    # --- Sơ đồ tư duy (mind map) — sinh theo yêu cầu qua tool `create_mind_map` ---
+    mindmap_enabled: bool          # bật/tắt tool vẽ sơ đồ tư duy.
+    mindmap_model: str             # model sinh JSON sơ đồ (structured output).
+
     @classmethod
     def from_env(cls) -> ChatConfig:
         return cls(
@@ -70,4 +74,6 @@ class ChatConfig:
             attached_files_enabled=_env_bool("CHAT_ATTACHED_FILES_ENABLED", default=True),
             attached_files_max=_env_int("CHAT_ATTACHED_FILES_MAX", default=5),
             gemini_file_ttl_hours=_env_int("GEMINI_FILE_TTL_HOURS", default=48),
+            mindmap_enabled=_env_bool("CHAT_MINDMAP_ENABLED", default=True),
+            mindmap_model=_env("GEMINI_MINDMAP_MODEL", default="gemini-2.5-flash"),
         )

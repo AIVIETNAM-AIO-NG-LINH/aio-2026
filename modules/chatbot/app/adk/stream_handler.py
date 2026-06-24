@@ -4,8 +4,10 @@ Mỗi `process(event)` yield 0..n `StreamChunk`, phân biệt qua `kind`:
   - "text"      → `chunk.text`       — mẩu câu trả lời (stream dần)
   - "thinking"  → `chunk.text`       — suy luận (nếu model bật thoughts)
   - "citations" → `chunk.citations`  — nguồn RAG, lấy từ function_response
+  - "mindmap"   → `chunk.focus`      — tín hiệu user yêu cầu vẽ sơ đồ (tool create_mind_map)
 
-ChatService dịch các kind này sang event SSE (delta / thinking / citations).
+ChatService dịch các kind này sang event SSE (delta / thinking / citations); riêng
+"mindmap" chỉ là TÍN HIỆU — sơ đồ được sinh & phát sau lượt trả lời (chat_service).
 
 Lưu ý dedup giống ga-ai: ADK SSE phát các mẩu partial rồi 1 event cuối GỘP toàn bộ
 câu trả lời — bỏ event cuối nếu đã stream để tránh lặp.
@@ -21,7 +23,7 @@ from typing import Any, Literal
 from google.adk.events import Event
 
 from ..chat_pipeline.citations import normalize_citations
-from .constants import SEARCH_TOOL_NAME
+from .constants import MINDMAP_TOOL_NAME, SEARCH_TOOL_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +36,11 @@ class StreamChunk:
     Pylance báo ngay, không chờ tới runtime).
     """
 
-    kind: Literal["text", "thinking", "citations"]
+    kind: Literal["text", "thinking", "citations", "mindmap"]
     text: str = ""
     citations: list[dict[str, Any]] = field(default_factory=list)
+    # Chỉ có nghĩa với kind="mindmap": chủ đề user muốn tập trung ("" = cả hội thoại).
+    focus: str = ""
 
 
 class ADKStreamHandler:
@@ -49,13 +53,22 @@ class ADKStreamHandler:
         if not event.content:
             return
 
-        # Bỏ event cuối (không partial) nếu đã stream text — tránh nội dung trùng.
-        if not event.partial and self._streamed_any_text:
-            return
+        # Event cuối (không partial) sau khi đã stream text LẶP LẠI toàn bộ text → bỏ
+        # phần text/thinking để khỏi trùng. NHƯNG function_response VẪN phải xử lý: tool
+        # có thể được gọi SAU khi text đã stream (vd `create_mind_map`), nếu return sớm
+        # cả event sẽ nuốt mất tín hiệu tool.
+        skip_text = not event.partial and self._streamed_any_text
 
         for part in event.content.parts or []:
+            # --- Kết quả tool (LUÔN xử lý, kể cả ở event cuối) ---
+            if getattr(part, "function_response", None) is not None:
+                yield from self._from_function_response(part.function_response)
+
+            elif skip_text:
+                continue
+
             # --- Suy luận (chain-of-thought) nếu model phát thoughts ---
-            if getattr(part, "thought", None) and part.text:
+            elif getattr(part, "thought", None) and part.text:
                 yield StreamChunk(kind="thinking", text=part.text)
 
             # --- Mẩu câu trả lời ---
@@ -63,13 +76,21 @@ class ADKStreamHandler:
                 self._streamed_any_text = True
                 yield StreamChunk(kind="text", text=part.text)
 
-            # --- Kết quả tool: trích citations từ search_knowledge_base ---
-            elif getattr(part, "function_response", None) is not None:
-                func_resp = part.function_response
-                if func_resp.name == SEARCH_TOOL_NAME:
-                    citations = self._extract_citations(func_resp.response)
-                    if citations:
-                        yield StreamChunk(kind="citations", citations=citations)
+    def _from_function_response(
+        self, func_resp: Any
+    ) -> Generator[StreamChunk, None, None]:
+        """Tool result → chunk: citations (search) hoặc tín hiệu mindmap (create_mind_map).
+
+        Tool khác (vd get_document_url) không sinh chunk — chỉ phục vụ model nội bộ.
+        """
+        if func_resp.name == SEARCH_TOOL_NAME:
+            citations = self._extract_citations(func_resp.response)
+            if citations:
+                yield StreamChunk(kind="citations", citations=citations)
+        elif func_resp.name == MINDMAP_TOOL_NAME:
+            response = func_resp.response
+            focus = str(response.get("focus") or "") if isinstance(response, dict) else ""
+            yield StreamChunk(kind="mindmap", focus=focus)
 
     @staticmethod
     def _extract_citations(response: Any) -> list[dict[str, Any]]:

@@ -40,3 +40,4 @@ def get_url(media_id: int) -> dict | None:
         "original_name": media.original_name,
         "url": media.url,
     }
+

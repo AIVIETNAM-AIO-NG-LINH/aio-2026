@@ -14,7 +14,12 @@ from google.genai import types
 
 from ..chat_pipeline.config import ChatConfig
 from .constants import ROOT_AGENT_NAME
-from .tools import get_document_url, search_knowledge_base, search_knowledge_graph
+from .tools import (
+    create_mind_map,
+    get_document_url,
+    search_knowledge_base,
+    search_knowledge_graph,
+)
 
 # Chỉ dẫn hệ thống — RAG grounded, có trích nguồn. Prompt viết TIẾNG ANH (model
 # bám instruction tốt hơn); câu trả lời vẫn theo ngôn ngữ của câu hỏi người dùng.
@@ -35,7 +40,14 @@ AGENT_INSTRUCTION = (
     "its `media_id` (which you get from a `search_knowledge_base` result). CALL this "
     "ONLY when you need to give the user a clickable link — they explicitly ask for the "
     "file/link, or you want a citation they can open. Do NOT call it for normal answers "
-    "that don't need a link, and NEVER guess a media_id.\n\n"
+    "that don't need a link, and NEVER guess a media_id.\n"
+    "- `create_mind_map`: builds a visual MIND MAP (sơ đồ tư duy) of the CURRENT "
+    "conversation for the user. CALL this ONLY when the user explicitly asks to draw, "
+    "visualize, or summarize the conversation (or a topic in it) as a mind map "
+    "(e.g. 'sơ đồ tư duy', 'mind map', 'vẽ sơ đồ'). The system builds the map from the "
+    "whole conversation — you do NOT output its nodes yourself. After calling it, ALWAYS "
+    "also write ONE short sentence in the user's language telling them the mind map is "
+    "shown below; NEVER leave your reply empty. Do NOT call it for ordinary questions.\n\n"
     "## Answering rules (STRICT)\n"
     "- LANGUAGE: ALWAYS answer in the language of the user's LATEST message — "
     "regardless of the language of the documents, tool results, long-term memory "
@@ -113,11 +125,16 @@ def create_root_agent() -> Agent:
         if cfg.max_output_tokens > 0
         else None
     )
+    tools = [search_knowledge_base, get_document_url, search_knowledge_graph]
+    # Tool vẽ sơ đồ tư duy chỉ thêm khi bật (tránh model gọi khi tính năng tắt).
+    if cfg.mindmap_enabled:
+        tools.append(create_mind_map)
+
     return Agent(
         name=ROOT_AGENT_NAME,
         model=_build_model(cfg),
         instruction=AGENT_INSTRUCTION,
         planner=planner,
         generate_content_config=generate_content_config,
-        tools=[search_knowledge_base, get_document_url, search_knowledge_graph],
+        tools=tools,
     )

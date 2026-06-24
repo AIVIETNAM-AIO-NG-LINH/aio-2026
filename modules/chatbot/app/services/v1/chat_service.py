@@ -45,12 +45,22 @@ from ...adk.session import create_session_with_history
 from ...adk.stream_handler import ADKStreamHandler, StreamChunk
 from ...chat_pipeline.config import ChatConfig
 from ...chat_pipeline.history import load_history_contents
+from ...chat_pipeline.mind_map import generate_mind_map
 from ...chat_pipeline.prompt import build_user_message
-from ...chat_pipeline.sse import done_event, emit_chat_events, error_event
+from ...chat_pipeline.sse import (
+    delta_event,
+    done_event,
+    emit_chat_events,
+    error_event,
+    mindmap_event,
+)
 from ...chat_pipeline.token_quota import QuotaUnavailable, check_quota, record_usage
 from ...chat_pipeline.usage import TokenUsage
 
 logger = logging.getLogger(__name__)
+
+# Trần ký tự transcript đưa vào Gemini khi sinh sơ đồ tư duy (giữ phần CUỐI nếu dài).
+_TRANSCRIPT_MAX_CHARS = 16000
 
 
 class ChatService(BaseService):
@@ -217,21 +227,52 @@ class ChatService(BaseService):
             # Điều phối thứ tự SSE nằm trong chat/sse.py (giữ trọn contract 1 chỗ);
             # ở đây chỉ lấy citations cuối về để lưu message. `answer_parts` do ta sở
             # hữu nên lỗi giữa chừng vẫn lưu được phần dở ở nhánh except.
-            citations = yield from emit_chat_events(
+            emit = yield from emit_chat_events(
                 chunks,
                 conversation_id=conversation.id,
                 message_id=assistant_message.id,
                 answer_parts=answer_parts,
                 thinking_parts=thinking_parts,
             )
+            citations = emit.citations
             answer = "".join(answer_parts).strip()
             reasoning = "".join(thinking_parts).strip()
 
             if not answer:
-                # Agent không trả về text (vd chỉ gọi tool rồi dừng) → coi là lỗi.
-                raise RuntimeError("ADK agent không trả về câu trả lời")
+                if emit.mindmap_requested:
+                    # Model chỉ gọi tool vẽ sơ đồ mà quên trả lời → dùng câu xác nhận
+                    # mặc định, stream luôn cho FE (live + lịch sử khớp nhau).
+                    answer = (
+                        "Mình đã vẽ sơ đồ tư duy cho cuộc trò chuyện này — "
+                        "bạn xem ở phần sơ đồ nhé."
+                    )
+                    # Append vào answer_parts để nhánh except (mark_error) cũng giữ được
+                    # nội dung này nếu mark_success lỗi giữa chừng (live == DB).
+                    answer_parts.append(answer)
+                    yield delta_event(answer)
+                else:
+                    # Agent không trả về text (vd chỉ gọi tool rồi dừng) → coi là lỗi.
+                    raise RuntimeError("ADK agent không trả về câu trả lời")
 
-            self.messages.mark_success(assistant_message, answer, citations, reasoning)
+            # Sơ đồ tư duy: sinh THEO YÊU CẦU sau khi đã có câu trả lời (token cộng vào
+            # lượt qua `token_usage`). Fail-safe — lỗi sinh sơ đồ KHÔNG làm hỏng câu trả
+            # lời đã xong (chỉ là thiếu sơ đồ). Phát SAU mẩu trả lời cuối, TRƯỚC `done`.
+            mind_map = None
+            if emit.mindmap_requested and chat_config.mindmap_enabled:
+                mind_map = self._generate_mind_map_safe(
+                    history,
+                    dto.question,
+                    answer,
+                    emit.mindmap_focus,
+                    chat_config,
+                    token_usage,
+                )
+                if mind_map is not None:
+                    yield mindmap_event(mind_map)
+
+            self.messages.mark_success(
+                assistant_message, answer, citations, reasoning, mind_map
+            )
             self._enqueue_background(conversation, dto.question, answer)
 
             yield done_event(assistant_message.id, token_usage.total_tokens)
@@ -288,6 +329,56 @@ class ChatService(BaseService):
                 "[chat] đính kèm file lỗi (conv=%s, bỏ qua)", conversation.id
             )
             return [], []
+
+    # --- Sơ đồ tư duy ------------------------------------------------------
+    @staticmethod
+    def _generate_mind_map_safe(
+        history: list[types.Content],
+        question: str,
+        answer: str,
+        focus: str,
+        chat_config: ChatConfig,
+        token_usage: TokenUsage,
+    ) -> dict | None:
+        """Sinh sơ đồ tư duy (FAIL-SAFE) + cộng token vào lượt. Lỗi → None.
+
+        Gọi Gemini structured-output là 1 lần gọi LLM RIÊNG (ADK không đếm) → cộng tay
+        `usage` vào `token_usage` để tính đúng hạn mức (record_usage ở `finally`).
+        """
+        try:
+            transcript = ChatService._build_transcript(history, question, answer)
+            mind_map, usage = generate_mind_map(
+                transcript, focus, chat_config.mindmap_model
+            )
+            token_usage.add(usage)  # add() bỏ qua nếu usage None.
+            return mind_map
+        except Exception:
+            logger.exception("[chat] sinh sơ đồ tư duy lỗi (bỏ qua)")
+            return None
+
+    @staticmethod
+    def _build_transcript(
+        history: list[types.Content], question: str, answer: str
+    ) -> str:
+        """Ghép lịch sử + lượt hiện tại thành transcript text cho Gemini sinh sơ đồ."""
+        lines: list[str] = []
+        for content in history:
+            text = " ".join(
+                part.text
+                for part in (content.parts or [])
+                if getattr(part, "text", None)
+            ).strip()
+            if not text:
+                continue
+            role = "User" if content.role == "user" else "Assistant"
+            lines.append(f"{role}: {text}")
+        lines.append(f"User: {question}")
+        lines.append(f"Assistant: {answer}")
+        transcript = "\n".join(lines)
+        # Quá dài → giữ phần CUỐI (bám lượt gần hiện tại nhất).
+        if len(transcript) > _TRANSCRIPT_MAX_CHARS:
+            transcript = transcript[-_TRANSCRIPT_MAX_CHARS:]
+        return transcript
 
     # --- Session ADK ------------------------------------------------------
     @staticmethod

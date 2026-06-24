@@ -79,6 +79,33 @@ def get_document_url(media_id: int) -> dict[str, Any]:
     return result or fallback
 
 
+def create_mind_map(focus: str = "") -> dict[str, Any]:
+    """Build a visual MIND MAP (sơ đồ tư duy) of the CURRENT conversation for the user.
+
+    Call this ONLY when the user explicitly asks to draw, visualize, or summarize the
+    conversation (or a topic in it) as a mind map (e.g. "sơ đồ tư duy", "mind map",
+    "vẽ sơ đồ"). The system builds the mind map from the WHOLE conversation by itself —
+    you do NOT produce its nodes. After calling this, ALWAYS also write one short
+    sentence (in the user's language) telling the user the mind map is shown below;
+    never leave your reply empty. Do NOT call it for ordinary questions.
+
+    Args:
+        focus: Optional topic to center the mind map on. Leave empty ("") to map the
+            whole conversation.
+
+    Returns:
+        A dict {"requested": true, "focus": <focus>} — confirmation that the mind map
+        was queued (the actual diagram is generated and sent to the user separately).
+    """
+    # TRIGGER thuần — KHÔNG gọi Gemini ở đây. Tool sync chạy TRỰC TIẾP trên thread
+    # event-loop của ADK runner (không phải thread riêng), nên việc nặng/blocking
+    # (gọi Gemini + đếm token) PHẢI để ngoài tool, chạy sau lượt trả lời ở
+    # chat_service — vừa không chặn event-loop, vừa đếm được token. Xem
+    # chat_pipeline/mind_map.py và services/v1/chat_service.py.
+    logger.info("[adk-tool] create_mind_map focus=%r", focus)
+    return {"requested": True, "focus": focus or ""}
+
+
 def search_knowledge_graph(query: str) -> dict[str, Any]:
     """Search the knowledge graph for entities and the relationships between them.
 

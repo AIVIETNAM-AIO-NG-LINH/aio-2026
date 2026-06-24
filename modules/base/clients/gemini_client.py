@@ -71,6 +71,29 @@ class GeminiClient:
         )
         return (response.text or "").strip()
 
+    # --- Sinh JSON có cấu trúc (structured output) ---------------------------
+    def generate_json(
+        self, contents: list[Any], model: str, response_schema: Any
+    ) -> tuple[str, Any]:
+        """Gọi non-stream ở chế độ JSON (response_schema), trả `(json_text, usage)`.
+
+        Bật `response_mime_type="application/json"` + `response_schema` để model BẮT
+        BUỘC trả JSON đúng khuôn (dùng cho sơ đồ tư duy). Trả text JSON THÔ (caller tự
+        `json.loads` + chuẩn hoá — không phụ thuộc `response.parsed` vốn đổi theo phiên
+        bản SDK) cùng `usage_metadata` để cộng token vào lượt chat.
+        """
+        from google.genai import types
+
+        response = self._client.models.generate_content(
+            model=model,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=response_schema,
+            ),
+        )
+        return (response.text or ""), getattr(response, "usage_metadata", None)
+
     # --- Upload file (Files API) --------------------------------------------
     def upload_file(self, file_bytes: bytes, mime_type: str | None) -> tuple[str, str]:
         """Đẩy bytes file lên **Gemini Files API**, trả `(file_uri, mime_type)`.

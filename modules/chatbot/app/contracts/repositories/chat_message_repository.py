@@ -40,6 +40,7 @@ class ChatMessageRepositoryInterface(ABC):
         answer: str,
         citations: list[dict],
         reasoning: str = "",
+        mind_map: dict | None = None,
     ) -> None:
         """Chốt câu trả lời thành công — chỉ ghi các cột thay đổi."""
         ...
