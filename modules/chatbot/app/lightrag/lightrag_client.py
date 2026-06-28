@@ -29,6 +29,25 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _run_coro_blocking(coro_factory):
+    """Chạy coroutine đến khi xong, AN TOÀN cả khi đang ở trong event loop đang chạy.
+
+    ADK runner sync (`get_runner().run()`) giữ một event loop đang chạy khi nó gọi
+    tool sync; lúc đó `asyncio.run()` sẽ ném 'cannot be called from a running event
+    loop'. Khi phát hiện đã có loop, ta chạy trong một thread riêng (loop riêng) để
+    không đụng loop của agent. Mỗi lần tạo LightRAG mới nên thread+loop riêng là an toàn.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro_factory())  # không có loop → chạy trực tiếp (Celery/CLI)
+
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        return executor.submit(lambda: asyncio.run(coro_factory())).result()
+
+
 class LightRagIndexer(BaseLightRagClient):
     """Re-index 1 tài liệu chatbot vào KG (delete → insert, idempotent theo doc_id)."""
 
@@ -117,7 +136,8 @@ class LightRagQuerier(BaseLightRagClient):
         """Sync wrapper fail-safe: trả context string cho agent, "" nếu tắt/rỗng/lỗi.
 
         KHÔNG raise: KG là nguồn phụ, lỗi chỉ log để agent vẫn trả lời được bằng
-        `search_knowledge_base`. Chạy bằng `asyncio.run()` vì ADK gọi tool sync.
+        `search_knowledge_base`. Dùng `_run_coro_blocking` để chạy được CẢ khi ADK
+        runner sync đang giữ một event loop (gọi trong thread riêng để tránh xung đột).
         """
         if not self.enabled:
             logger.info("[lightrag] LIGHTRAG_ENABLED=false, bỏ qua truy vấn KG")
@@ -126,7 +146,7 @@ class LightRagQuerier(BaseLightRagClient):
             return ""
 
         try:
-            return asyncio.run(self._aquery(question.strip()))
+            return _run_coro_blocking(lambda: self._aquery(question.strip())) or ""
         except Exception:
             logger.exception("[lightrag] lỗi truy vấn KG (trả rỗng)")
             return ""
