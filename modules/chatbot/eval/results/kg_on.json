@@ -1,0 +1,170 @@
+{
+  "meta": {
+    "n": 8,
+    "top_k": 5,
+    "top_n": 30,
+    "rrf_k": 60
+  },
+  "retrieval": {
+    "hybrid": {
+      "recall": NaN,
+      "precision": NaN,
+      "mrr": NaN,
+      "hit": NaN,
+      "ndcg": NaN,
+      "map": NaN,
+      "empty": 0,
+      "success_rate": 1.0
+    }
+  },
+  "generation": {
+    "agg": {
+      "ttft_p50": 7.070416315999864,
+      "ttft_p95": 12.137937720250012,
+      "latency_p50": 8.140826712499802,
+      "latency_p95": 13.801422631199054,
+      "faithfulness": 0.69375,
+      "answer_relevance": 1.0,
+      "context_precision": 0.84375,
+      "context_recall": 0.64375,
+      "correctness": 0.9375,
+      "rouge_l": 0.14612598510910996,
+      "bleu": 0.03165983478925907,
+      "error_rate": 0.0,
+      "empty_rate": 0.0,
+      "success_rate": 1.0,
+      "throughput_seq_qps": 0.10926823580481373,
+      "n": 8
+    },
+    "per_question": [
+      {
+        "question": "Trong Scrum, ba vai trò (Product Owner, Scrum Master, Developers) tham gia vào các sự kiện của một Sprint như thế nào?",
+        "answer": "Trong Scrum, ba vai trò Product Owner, Scrum Master và Developers tham gia vào các sự kiện của một Sprint như sau (Nguồn: Documents_2026-5_M01W01 - Teamwork Tools (Overleaf, Jira, agile_scrum)_[Slide_v3]-Teamwork-Tools.pdf, trang 17, 22, 23, 28):\n\n*   **Sprint Planning (Lập kế hoạch Sprint):**\n    *   **Product Owner:** Mang đến Product Backlog đã được ưu tiên và làm rõ các mục cho Nhóm Phát triển.\n    *   **Developers:** Quyết định mục tiêu Sprint (Sprint Goal), chọn các mục từ Product Backlog để tạo Sprint Backlog và lập kế hoạch cách thức để hoàn thành công việc.\n    *   **Scrum Master:** Hướng dẫn quy trình, đảm bảo sự kiện diễn ra hiệu quả và giúp nhóm hiểu mục tiêu.\n*   **Daily Scrum (Họp Scrum Hàng ngày):**\n    *   **Developers:** Là sự kiện chính của Developers để kiểm tra tiến độ, đồng bộ hóa hoạt động và lập kế hoạch cho 24 giờ tới nhằm đạt được Mục tiêu Sprint.\n    *   **Product Owner và Scrum Master:** Thường không tham gia tích cực trừ khi được Developers mời để làm rõ thông tin hoặc giải quyết trở ngại. Scrum Master đảm bảo sự kiện diễn ra đúng giờ và đúng mục đích.\n*   **Sprint Review (Sơ kết Sprint):**\n    *   **Product Owner:** Trình bày Increment đã hoàn thành, thảo luận về Product Backlog và thu thập phản hồi từ các bên liên quan.\n    *   **Developers:** Thể hiện các công việc đã hoàn thành (Working Increment).\n    *   **Scrum Master:** Đảm bảo sự kiện được tổ chức và tất cả người tham gia hiểu rõ mục đích của nó.\n*   **Sprint Retrospective (Cải tiến Sprint):**\n    *   **Product Owner, Scrum Master, Developers:** Cả ba vai trò đều tham gia để nhìn lại những gì đã diễn ra trong Sprint, xác định những điểm tốt, những vấn đề và đưa ra các hành động cải tiến cho Sprint tiếp theo.\n    *   **Scrum Master:** Tạo điều kiện cho sự kiện, đảm bảo môi trường tích cực và giúp nhóm xác định các cải tiến.",
+        "n_contexts": 5,
+        "ttft": 9.373503419999906,
+        "latency": 10.034305462000702,
+        "rouge_l": 0.13043478260869565,
+        "bleu": 0.022598079912415407,
+        "judge": {
+          "faithfulness": 0.9,
+          "answer_relevance": 1.0,
+          "context_precision": 0.9,
+          "context_recall": 0.7,
+          "correctness": 0.8
+        }
+      },
+      {
+        "question": "Agile Manifesto và khung làm việc Scrum liên hệ với nhau như thế nào?",
+        "answer": "Agile Manifesto và khung làm việc Scrum có mối liên hệ mật thiết với nhau:\n\n*   **Agile Manifesto là nền tảng:** Các nguyên tắc phát triển phần mềm Agile được xây dựng dựa trên Tuyên ngôn Agile (Agile Manifesto). Tuyên ngôn này nhấn mạnh các giá trị như \"Cá nhân và sự tương tác hơn là quy trình và công cụ\", \"Phần mềm chạy được hơn là tài liệu đầy đủ\", \"Hợp tác với khách hàng hơn là đàm phán hợp đồng\" và \"Phản hồi với thay đổi hơn là bám sát kế hoạch\".\n*   **Scrum là một khung làm việc của Agile:** Scrum là một khung làm việc phổ biến, nhẹ nhàng và là phương pháp Agile được ưa chuộng nhất kể từ năm 2006, được sử dụng trong các nhóm phát triển phần mềm Agile. Nó hoạt động trong khuôn khổ của phương pháp Agile.\n*   **Scrum thể hiện các giá trị của Agile:** Scrum tạo ra giá trị thông qua sự thích nghi và thể hiện các nguyên tắc của Agile bằng cách tập trung vào các chu kỳ ngắn (Sprint), liên tục cải tiến, phản hồi thường xuyên và khả năng thích ứng với các yêu cầu thay đổi.\n\nNói cách khác, Agile Manifesto cung cấp các giá trị và nguyên tắc cốt lõi, còn Scrum là một cách cụ thể, có cấu trúc để áp dụng những giá trị và nguyên tắc đó vào thực tế phát triển sản phẩm. Scrum phù hợp với những công việc mà các yêu cầu phức tạp hoặc cần được khám phá trong quá trình thực hiện.",
+        "n_contexts": 0,
+        "ttft": 10.659670588998779,
+        "latency": 11.156051546999151,
+        "rouge_l": 0.17021276595744678,
+        "bleu": 0.04469477593995013,
+        "judge": {
+          "faithfulness": 0.0,
+          "answer_relevance": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 0.0,
+          "correctness": 1.0
+        }
+      },
+      {
+        "question": "Mối liên hệ giữa chuẩn hóa cơ sở dữ liệu (normalization, 1NF) và các thao tác CRUD là gì?",
+        "answer": "Chuẩn hóa cơ sở dữ liệu (Database Normalization), đặc biệt là việc đạt được Dạng chuẩn đầu tiên (1NF), có mối liên hệ mật thiết với các thao tác CRUD (Create, Read, Update, Delete) thông qua việc cải thiện tính toàn vẹn dữ liệu và giảm thiểu các bất thường.\n\n**1. Chuẩn hóa cơ sở dữ liệu (Database Normalization) và 1NF:**\n*   Chuẩn hóa cơ sở dữ liệu là một kỹ thuật thiết kế nhằm tổ chức các cột và bảng của cơ sở dữ liệu quan hệ để giảm thiểu sự dư thừa dữ liệu và cải thiện tính toàn vẹn của dữ liệu. (Nguồn: , page 31, 32)\n*   Quá trình này chia các bảng lớn hơn thành các bảng nhỏ hơn và liên kết chúng bằng các mối quan hệ. (Nguồn: , page 31, 32)\n*   **Dạng chuẩn đầu tiên (1NF)** yêu cầu:\n    *   Tất cả các thuộc tính (cột) trong một quan hệ (bảng) phải có giá trị nguyên tố (atomic value), tức là mỗi ô chỉ nên chứa một giá trị duy nhất.\n    *   Không chứa bất kỳ thuộc tính đa trị nào (multi-valued attributes).\n    *   Mỗi bản ghi (hàng) phải là duy nhất. (Nguồn: , page 34, 35)\n\n**2. Các thao tác CRUD:**\n*   CRUD là viết tắt của Create (Tạo), Read (Đọc), Update (Cập nhật) và Delete (Xóa), đại diện cho bốn chức năng cơ bản để tương tác với cơ sở dữ liệu. (Nguồn: , page 9)\n*   Các thao tác này thường được thực hiện trên một cơ sở dữ liệu quan hệ, ví dụ thông qua SQL. (Nguồn: , page 9)\n\n**3. Mối liên hệ:**\nViệc không chuẩn hóa hoặc chuẩn hóa kém cơ sở dữ liệu có thể dẫn đến các bất thường (anomalies) trong quá trình thực hiện các thao tác CRUD:\n*   **Bất thường khi thêm (Insertion anomalies):** Xảy ra khi không thể thêm dữ liệu vào cơ sở dữ liệu vì một số thuộc tính có thể bị thiếu tại thời điểm thêm. Ví dụ, nếu bạn không thể thêm thông tin về một khóa học mới nếu chưa có sinh viên nào đăng ký khóa học đó. (Nguồn: , page 30)\n*   **Bất thường khi cập nhật (Update anomalies):** Xảy ra khi cùng một mục dữ liệu được lặp lại ở nhiều nơi và không được liên kết với nhau. Nếu chỉ một bản sao của dữ liệu đó được cập nhật, cơ sở dữ liệu sẽ có dữ liệu không nhất quán. (Nguồn: , page 31)\n*   **Bất thường khi xóa (Deletion anomalies):** Xảy ra khi xóa một phần dữ liệu vô tình xóa cả thông tin cần thiết khác khỏi cơ sở dữ liệu. Ví dụ, nếu một sinh viên bỏ học và bản ghi của họ bị xóa, thông tin về khóa học mà họ đã đăng ký (nếu chỉ được lưu trữ trong cùng một bảng) cũng có thể bị mất. (Nguồn: , page 32)\n\n**Kết luận:**\nChuẩn hóa cơ sở dữ liệu, bắt đầu từ 1NF, giúp tổ chức cấu trúc bảng để loại bỏ các thuộc tính đa trị, đảm bảo mỗi ô chứa một giá trị duy nhất và mỗi bản ghi là độc nhất. Điều này trực tiếp giải quyết các vấn đề dư thừa dữ liệu và phụ thuộc không cần thiết, từ đó giảm thiểu đáng kể hoặc loại bỏ các bất thường khi thực hiện các thao tác Create, Read, Update, Delete. Một cơ sở dữ liệu được chuẩn hóa tốt sẽ giúp các thao tác CRUD diễn ra nhất quán, hiệu quả và duy trì tính toàn vẹn của dữ liệu.",
+        "n_contexts": 0,
+        "ttft": 12.933927714000674,
+        "latency": 15.225853214999006,
+        "rouge_l": 0.09343065693430658,
+        "bleu": 0.03614118618921282,
+        "judge": {
+          "faithfulness": 0.0,
+          "answer_relevance": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 0.0,
+          "correctness": 1.0
+        }
+      },
+      {
+        "question": "ERD và các dạng chuẩn (normal forms) phối hợp với nhau ra sao trong quy trình thiết kế cơ sở dữ liệu quan hệ?",
+        "answer": "Trong quy trình thiết kế cơ sở dữ liệu quan hệ, ERD (Sơ đồ Thực thể-Quan hệ) và các dạng chuẩn (Normal Forms) phối hợp với nhau theo các bước sau:\n\n1.  **Thiết kế khái niệm và logic với ERD**:\n    *   ERD được sử dụng ở giai đoạn thiết kế khái niệm và logic để mô hình hóa cấu trúc dữ liệu. Nó giúp xác định các thực thể (ví dụ: Khách hàng, Sản phẩm), các thuộc tính của chúng (ví dụ: MaKH, ho_ten), và mối quan hệ giữa các thực thể (ví dụ: Khách hàng đặt hàng Sản phẩm).\n    *   Các ký hiệu như Chen Notation phù hợp để thiết kế dữ liệu ở mức khái niệm, trong khi Crow's Foot thường được dùng để thể hiện ERD mô phỏng cấu trúc thực tế của cơ sở dữ liệu (Nguồn: Documents_2026-5_M01W02 - Data Extraction_Retrieval Using SQL_[Slides_v3]-DataExtractionSQL.pdf, trang 5).\n    *   Kết quả của giai đoạn này là một mô hình trực quan về cách dữ liệu được tổ chức và liên kết.\n\n2.  **Tối ưu hóa và tinh chỉnh với Normal Forms**:\n    *   Sau khi mô hình logic (từ ERD) đã được chuyển thành các bảng và thuộc tính sơ bộ, các dạng chuẩn (1NF, 2NF, 3NF, BCNF) được áp dụng để tinh chỉnh cấu trúc bảng, loại bỏ sự dư thừa dữ liệu và cải thiện tính toàn vẹn của dữ liệu.\n    *   **1NF** (Dạng chuẩn thứ nhất): Đảm bảo tất cả các thuộc tính trong một bảng có giá trị nguyên tố (atomic value) (Nguồn: Documents_2026-5_M01W02 - Data Extraction_Retrieval Using SQL_[Slides_v3]-DataExtractionSQL.pdf, trang 33).\n    *   **2NF** (Dạng chuẩn thứ hai): Yêu cầu bảng phải ở 1NF và tất cả các thuộc tính không khóa phải phụ thuộc hoàn toàn vào khóa chính (Nguồn: Documents_2026-5_M01W02 - Data Extraction_Retrieval Using SQL_[Slides_v3]-DataExtractionSQL.pdf, trang 33).\n    *   **3NF** (Dạng chuẩn thứ ba): Yêu cầu bảng phải ở 2NF và không có sự phụ thuộc bắc cầu (transitive dependency) (Nguồn: Documents_2026-5_M01W02 - Data Extraction_Retrieval Using SQL_[Slides_v3]-DataExtractionSQL.pdf, trang 33, 37).\n    *   **BCNF** (Dạng chuẩn Boyce-Codd): Là một dạng mạnh hơn của 3NF, loại bỏ các sự phụ thuộc chức năng mà trong đó phần xác định không phải là siêu khóa (Nguồn: Documents_2026-5_M01W02 - Data Extraction_Retrieval Using SQL_[Slides_v3]-DataExtractionSQL.pdf, trang 33).\n\nTóm lại, ERD cung cấp cái nhìn tổng quan và cấu trúc ban đầu của cơ sở dữ liệu ở cấp độ khái niệm và logic, trong khi Normal Forms đóng vai trò như một bộ công cụ để tối ưu hóa và đảm bảo chất lượng của cấu trúc bảng đó, giảm thiểu các bất thường (anomalies) khi cập nhật, thêm mới hoặc xóa dữ liệu (Nguồn: Documents_2026-5_M01W02 - Data Extraction_Retrieval Using SQL_[Slides_v3]-DataExtractionSQL.pdf, trang 29).",
+        "n_contexts": 5,
+        "ttft": 6.770744461999129,
+        "latency": 8.50869808799871,
+        "rouge_l": 0.125,
+        "bleu": 0.030321133218649852,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0,
+          "correctness": 1.0
+        }
+      },
+      {
+        "question": "Các nguyên lý viết code tốt trong Coding Methodology liên quan thế nào tới quy ước đặt tên PEP-8 khi viết Python?",
+        "answer": "Các nguyên lý viết code tốt trong Coding Methodology có mối liên hệ mật thiết với quy ước đặt tên PEP-8 khi viết Python, cụ thể là:\n\n*   **Tăng khả năng đọc hiểu (Readability counts):** Một trong những nguyên lý cốt lõi của The Zen of Python (PEP 20) là \"Readability counts\" (Khả năng đọc hiểu là ưu tiên số 1). Quy ước đặt tên PEP-8 được thiết kế để cải thiện khả năng đọc hiểu của mã Python bằng cách cung cấp các hướng dẫn rõ ràng và nhất quán cho việc đặt tên biến, hàm, lớp và hằng số.\n*   **Code đẹp và rõ ràng (Beautiful is better than ugly, Explicit is better than implicit):** PEP-8 khuyến khích việc đặt tên có ý nghĩa (ví dụ: `SECONDS_PER_DAY` thay vì `d`). Điều này giúp mã trở nên \"đẹp\" hơn và \"rõ ràng\" hơn, thể hiện đúng mục đích của từng thành phần, thay vì ẩn ý hay khó hiểu.\n*   **Đơn giản và nhất quán (Simple is better than complex):** Việc tuân thủ các quy tắc đặt tên như `snake_case` cho biến và hàm, `PascalCase` cho lớp, và `UPPER_CASE` cho hằng số giúp tạo ra sự nhất quán trong toàn bộ codebase, từ đó giảm độ phức tạp khi đọc và hiểu mã.\n*   **Clean Code:** Các quy tắc đặt tên của PEP-8 là một phần quan trọng của \"Clean Code\", nơi việc sử dụng tên biến/hàm có ý nghĩa và tuân thủ các quy ước định dạng được nhấn mạnh để tăng khả năng đọc hiểu.\n\nTóm lại, quy ước đặt tên PEP-8 là một ứng dụng cụ thể và thực tiễn của các nguyên lý viết code tốt trong Coding Methodology, đặc biệt là các nguyên tắc về khả năng đọc hiểu, sự rõ ràng và tính nhất quán, để tạo ra mã Python dễ đọc, dễ hiểu và dễ bảo trì.\n\n(Nguồn: Documents_2026-5_M01W02 - Coding Methodology_[Slide_v3]-Coding-Methodology-Python.pdf, trang 10, 12, 22)",
+        "n_contexts": 5,
+        "ttft": 6.597212960999968,
+        "latency": 7.362705003000883,
+        "rouge_l": 0.12073490813648294,
+        "bleu": 0.00041104835730612524,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 0.85,
+          "correctness": 0.95
+        }
+      },
+      {
+        "question": "Trong ví dụ rule-based chatbot (GEARVN), luồng xử lý đầu vào của khách hàng dựa trên cấu trúc rẽ nhánh (branching) trong Python như thế nào?",
+        "answer": "Trong chatbot rule-based (ví dụ GEARVN), luồng xử lý đầu vào của khách hàng dựa trên cấu trúc rẽ nhánh. Cụ thể:\n\n1.  Khi khách hàng gửi đầu vào, hệ thống sẽ kiểm tra xem liệu đầu vào đó có nằm trong các tùy chọn đã định sẵn hay không.\n2.  Nếu có, hệ thống sẽ tiếp tục rẽ nhánh để xác định liệu có thể cung cấp câu trả lời tự động mà không cần sự can thiệp của con người hay không.\n3.  Nếu không thể trả lời tự động, cuộc trò chuyện sẽ được chuyển đến chuyên viên hỗ trợ. Ngược lại, nếu có câu trả lời tự động, hệ thống sẽ trả về câu trả lời đó.\n\nCấu trúc này tương tự như cách hoạt động của `switch case` trong lập trình, nơi một biểu thức được kiểm tra và các hành động khác nhau được thực hiện tùy thuộc vào giá trị khớp với từng \"case\" (trường hợp) cụ thể.\n\n(Nguồn: Documents_2026-5_M01W01 - Basic Python (Branching~Rule-based Chatbot)_[Slide_v4]-BasicPython.pdf, trang 41, 43, 50)",
+        "n_contexts": 5,
+        "ttft": 6.442700794001212,
+        "latency": 6.786732295000547,
+        "rouge_l": 0.15767634854771784,
+        "bleu": 0.03400704564372187,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0,
+          "context_precision": 0.75,
+          "context_recall": 1.0,
+          "correctness": 0.95
+        }
+      },
+      {
+        "question": "Bit depth và cách một ảnh số được biểu diễn liên hệ thế nào tới số màu hiển thị được?",
+        "answer": "Bit depth (độ sâu màu) là yếu tố quyết định số lượng màu sắc có thể hiển thị trong một hình ảnh số. Nó được đo bằng số bit trên mỗi pixel (Source: Documents_2026-5_M01W02 - Image and Video Data_[Slide_v2]-Image-Video-Data.pdf, page 33).\n\nMột hình ảnh số được biểu diễn dưới dạng lưới các pixel, trong đó mỗi pixel lưu giữ giá trị màu sắc và độ sáng của nó (Source: Documents_2026-5_M01W02 - Image and Video Data_[Slide_v2]-Image-Video-Data.pdf, page 25). Số bit dùng để mã hóa mỗi pixel sẽ quyết định số lượng màu mà pixel đó có thể hiển thị. Cụ thể:\n*   1-bit hiển thị 2 màu (đen và trắng).\n*   8-bit hiển thị 256 màu.\n*   24-bit hiển thị 16.7 triệu màu (True color).\n(Source: Documents_2026-5_M01W02 - Image and Video Data_[Slide_v2]-Image-Video-Data.pdf, page 33)\n\nĐộ sâu bit cũng là một yếu tố trực tiếp ảnh hưởng đến kích thước tệp của một hình ảnh chưa nén (Source: Documents_2026-5_M01W02 - Image and Video Data_[Slide_v2]-Image-Video-Data.pdf, page 42).",
+        "n_contexts": 5,
+        "ttft": 5.900881169000058,
+        "latency": 6.367022877999261,
+        "rouge_l": 0.21428571428571425,
+        "bleu": 0.04918378586629266,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0,
+          "context_precision": 0.4,
+          "context_recall": 1.0,
+          "correctness": 1.0
+        }
+      },
+      {
+        "question": "Theo tài liệu hướng dẫn làm video cho cuộc thi, ba điều kiện người trình bày cần đáp ứng và các lỗi thường gặp gắn kết với nhau ra sao để tạo một video tốt?",
+        "answer": "Theo tài liệu hướng dẫn làm video cho cuộc thi (Nguồn: Video_Guildelines.pdf, trang 10), người trình bày cần đáp ứng ba điều kiện cơ bản:\n\n1.  **Hiểu rõ phần nội dung mình trình bày:** Điều này giúp người trình bày tránh được các lỗi như nêu bài toán quá rộng, dùng nhiều bảng biểu nhưng không phân tích, hoặc nói nhiều về ý tưởng mà không cho thấy sản phẩm đang chạy. Khi người trình bày nắm vững nội dung, video sẽ có chiều sâu và giá trị thực chất hơn.\n2.  **Diễn đạt mạch lạc, dễ hiểu:** Điều kiện này giúp người trình bày tránh các lỗi như đọc lại báo cáo theo kiểu học thuật khó theo dõi, hoặc dùng quá nhiều thuật ngữ mà không giải thích. Một cách diễn đạt rõ ràng sẽ giúp người xem dễ dàng tiếp thu thông tin.\n3.  **Giữ được nhịp trình bày ổn định:** Điều này giúp video có sự liền mạch, tránh các lỗi như dành quá nhiều thời gian cho phần mở đầu nhưng lại quá ít cho phần demo, hoặc các chuyển đoạn đột ngột làm video bị đứt mạch. Nhịp điệu ổn định tạo cảm giác chuyên nghiệp và thu hút người xem.\n\nTóm lại, ba điều kiện trên của người trình bày gắn kết chặt chẽ với việc tránh các lỗi thường gặp, từ đó tạo ra một video chất lượng, mạch lạc, dễ hiểu và có giá trị thuyết phục cao.",
+        "n_contexts": 5,
+        "ttft": 7.370088170000599,
+        "latency": 7.772955337000894,
+        "rouge_l": 0.1572327044025157,
+        "bleu": 0.035921623186523734,
+        "judge": {
+          "faithfulness": 0.65,
+          "answer_relevance": 1.0,
+          "context_precision": 0.7,
+          "context_recall": 0.6,
+          "correctness": 0.8
+        }
+      }
+    ]
+  }
+}

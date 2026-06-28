@@ -1,0 +1,142 @@
+[
+  {
+    "question": "Công ty nào ban hành các thông báo quyền riêng tư (privacy notice) được mô tả trong tài liệu C2P?",
+    "golden": [{"document_id": 3}],
+    "reference_answer": "GaneshAID Consultancy Company Ltd. là công ty ban hành các privacy notice trong tài liệu."
+  },
+  {
+    "question": "Người dùng có thể liên hệ về các vấn đề quyền riêng tư qua địa chỉ email nào?",
+    "golden": [{"document_id": 3}],
+    "reference_answer": "Qua email dso@ganeshaid.com."
+  },
+  {
+    "question": "Chính sách bảo mật của ứng dụng VaxyReach được cập nhật lần cuối vào ngày nào?",
+    "golden": [{"document_id": 3, "page": 26}],
+    "reference_answer": "Ngày 15 tháng 1 năm 2026 (January 15th, 2026)."
+  },
+  {
+    "question": "Ai là tác giả của tài liệu hướng dẫn làm video cho cuộc thi Conquer?",
+    "golden": [{"document_id": 4, "page": 1}],
+    "reference_answer": "Nguyễn Đặng Duy Tân."
+  },
+  {
+    "question": "Theo tài liệu hướng dẫn làm video, người trình bày nên đáp ứng ba điều kiện cơ bản nào?",
+    "golden": [{"document_id": 4, "page": 10}],
+    "reference_answer": "Hiểu rõ nội dung mình trình bày; diễn đạt mạch lạc, dễ hiểu; và giữ được nhịp trình bày ổn định."
+  },
+  {
+    "question": "Những lỗi thường gặp khi làm video theo hướng đi làm là gì?",
+    "golden": [{"document_id": 4, "page": 6}],
+    "reference_answer": "Dành quá nhiều thời gian cho phần mở đầu nhưng quá ít cho demo; nói nhiều về ý tưởng nhưng không cho người xem thấy sản phẩm đang chạy."
+  },
+  {
+    "question": "Chuỗi Gregory-Leibniz được dùng để ước lượng giá trị gì, và với n=1000 thì kết quả xấp xỉ bao nhiêu?",
+    "golden": [{"document_id": 5, "page": 26}, {"document_id": 5, "page": 27}],
+    "reference_answer": "Ước lượng số PI; với n=1000 kết quả ước lượng khoảng 3.1426."
+  },
+  {
+    "question": "Trong ví dụ vòng lặp while True dùng random.randint, chương trình thoát khỏi vòng lặp khi nào?",
+    "golden": [{"document_id": 5, "page": 37}],
+    "reference_answer": "Khi số ngẫu nhiên sinh ra bằng 5 (num == 5) thì break thoát khỏi vòng while."
+  },
+  {
+    "question": "Hàm range trong Python nhận những tham số nào để sinh dãy số?",
+    "golden": [{"document_id": 5, "page": 6}, {"document_id": 5, "page": 13}],
+    "reference_answer": "range(start, stop, step) với start mặc định 0 và step mặc định 1."
+  },
+  {
+    "question": "Theo dòng thời gian lịch sử Python trong slide, Python 1.0 được phát hành vào thời điểm nào?",
+    "golden": [{"document_id": 6, "page": 4}],
+    "reference_answer": "Tháng 1 năm 1994 (01/1994)."
+  },
+  {
+    "question": "Hàm softmax biến đổi một vector thành dạng gì và tổng các giá trị đầu ra bằng bao nhiêu?",
+    "golden": [{"document_id": 6, "page": 24}, {"document_id": 6, "page": 25}],
+    "reference_answer": "Chuyển vector thành các giá trị xác suất trong [0,1] và tổng các xác suất bằng 1."
+  },
+  {
+    "question": "Trong ví dụ chatbot dựa trên luật (rule-based) GEARVN, hệ thống xử lý đầu vào của khách hàng theo luồng nào?",
+    "golden": [{"document_id": 6, "page": 43}],
+    "reference_answer": "Kiểm tra đầu vào có nằm trong các lựa chọn không; nếu có thể trả lời mà không cần con người thì trả lời, ngược lại kết nối tới nhân viên hỗ trợ."
+  },
+  {
+    "question": "Trong cơ sở dữ liệu, bốn thao tác CRUD là gì?",
+    "golden": [{"document_id": 7, "page": 9}],
+    "reference_answer": "Create (tạo), Read (đọc), Update (cập nhật), Delete (xóa)."
+  },
+  {
+    "question": "Trong ví dụ tạo cơ sở dữ liệu của bài Basic SQL, bảng Customers gồm những cột nào?",
+    "golden": [{"document_id": 7, "page": 11}],
+    "reference_answer": "CustomerID (INT), FirstName, LastName, Email, Phone."
+  },
+  {
+    "question": "Zen of Python gồm bao nhiêu nguyên tắc, do ai viết và xem bằng lệnh nào?",
+    "golden": [{"document_id": 8, "page": 22}],
+    "reference_answer": "Gồm 19 nguyên tắc, do Tim Peters viết trong PEP 20, xem bằng cách gõ 'import this'."
+  },
+  {
+    "question": "Năm nguyên lý cốt lõi để viết code tốt được nêu trong bài Coding Methodology là gì?",
+    "golden": [{"document_id": 8, "page": 33}],
+    "reference_answer": "DRY, KISS, YAGNI, Defensive Programming và Separation of Concerns (SoC)."
+  },
+  {
+    "question": "Theo PEP-8, biến và hàm, class, và hằng số dùng quy ước đặt tên nào?",
+    "golden": [{"document_id": 8, "page": 12}],
+    "reference_answer": "Biến và hàm dùng snake_case, class dùng PascalCase, hằng số dùng UPPER_CASE."
+  },
+  {
+    "question": "File CLAUDE.md dùng để làm gì khi code với Claude Code?",
+    "golden": [{"document_id": 8, "page": 46}],
+    "reference_answer": "Là file thiết lập context/bộ nhớ về project (công nghệ, quy ước, cấu trúc) mà AI đọc trước mỗi lần làm việc với codebase."
+  },
+  {
+    "question": "Trong ERD, các loại quan hệ (relationship) giữa hai thực thể gồm những loại nào?",
+    "golden": [{"document_id": 9, "page": 8}],
+    "reference_answer": "one-to-one (1:1), one-to-many (1:N), many-to-one (N:1) và many-to-many (M:N)."
+  },
+  {
+    "question": "Một quan hệ ở dạng chuẩn 1NF (First Normal Form) khi nào?",
+    "golden": [{"document_id": 9, "page": 33}, {"document_id": 9, "page": 35}],
+    "reference_answer": "Khi tất cả các thuộc tính của quan hệ đều có giá trị nguyên tử (atomic value)."
+  },
+  {
+    "question": "Các hàm tổng hợp (aggregation) cơ bản trong SQL được giới thiệu gồm những hàm nào?",
+    "golden": [{"document_id": 9, "page": 69}],
+    "reference_answer": "COUNT, SUM, AVG, MIN và MAX."
+  },
+  {
+    "question": "Dựa trên mức độ cấu trúc, dữ liệu được phân thành ba loại nào?",
+    "golden": [{"document_id": 10, "page": 4}],
+    "reference_answer": "Structured (có cấu trúc), Semi-structured (bán cấu trúc) và Unstructured (phi cấu trúc)."
+  },
+  {
+    "question": "Theo bài Image and Video Data, một ảnh số (digital image) được biểu diễn như thế nào?",
+    "golden": [{"document_id": 10, "page": 27}, {"document_id": 10, "page": 28}],
+    "reference_answer": "Là một ma trận gồm nhiều phần tử ảnh nhỏ (pixel), mỗi pixel được biểu diễn bằng một giá trị số (cường độ/độ sáng)."
+  },
+  {
+    "question": "Bit depth (độ sâu màu) 8-bit và 24-bit biểu diễn được bao nhiêu màu?",
+    "golden": [{"document_id": 10, "page": 33}],
+    "reference_answer": "8-bit biểu diễn 256 màu; 24-bit biểu diễn 16.7 triệu màu."
+  },
+  {
+    "question": "Tuyên ngôn Agile (Agile Manifesto) đề cao những giá trị nào?",
+    "golden": [{"document_id": 11, "page": 12}],
+    "reference_answer": "Cá nhân và tương tác hơn quy trình và công cụ; phần mềm chạy được hơn tài liệu đầy đủ; hợp tác với khách hàng hơn đàm phán hợp đồng; phản hồi với thay đổi hơn bám theo kế hoạch."
+  },
+  {
+    "question": "Một Scrum Team gồm những vai trò nào?",
+    "golden": [{"document_id": 11, "page": 22}],
+    "reference_answer": "Product Owner, Scrum Master và Developers."
+  },
+  {
+    "question": "Bốn sự kiện (events) trong một Sprint của Scrum là gì?",
+    "golden": [{"document_id": 11, "page": 28}, {"document_id": 11, "page": 27}],
+    "reference_answer": "Sprint Planning, Daily Scrum, Sprint Review và Sprint Retrospective."
+  },
+  {
+    "question": "Theo khảo sát của Asana được trích trong bài Teamwork Tools, bao nhiêu phần trăm thời gian của nhân viên dành cho busywork?",
+    "golden": [{"document_id": 11, "page": 5}],
+    "reference_answer": "53% thời gian dành cho busywork."
+  }
+]

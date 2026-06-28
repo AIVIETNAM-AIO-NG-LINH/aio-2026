@@ -1,0 +1,338 @@
+{
+  "meta": {
+    "n": 28,
+    "top_k": 5,
+    "top_n": 30,
+    "rrf_k": 60
+  },
+  "retrieval": {
+    "hybrid_rerank": {
+      "recall": 0.875,
+      "precision": 0.2857142857142857,
+      "mrr": 0.7541666666666667,
+      "hit": 0.8928571428571429,
+      "empty": 0
+    }
+  },
+  "generation": {
+    "agg": {
+      "ttft_p50": 5.57743943999958,
+      "ttft_p95": 6.324079684051684,
+      "latency_p50": 5.979693315002805,
+      "latency_p95": 6.585966411652407,
+      "faithfulness": 1.0,
+      "answer_relevance": 0.9642857142857143,
+      "n": 28
+    },
+    "per_question": [
+      {
+        "question": "Công ty nào ban hành các thông báo quyền riêng tư (privacy notice) được mô tả trong tài liệu C2P?",
+        "answer": "Xin lỗi, thông tin này không có trong tài liệu của hệ thống. Các đoạn trích từ tài liệu C2P không nêu rõ công ty nào ban hành các thông báo quyền riêng tư.",
+        "n_contexts": 5,
+        "ttft": 5.289927752004587,
+        "latency": 5.348476335006126,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Người dùng có thể liên hệ về các vấn đề quyền riêng tư qua địa chỉ email nào?",
+        "answer": "Bạn có thể liên hệ về các vấn đề quyền riêng tư qua địa chỉ email dso@ganeshaid.com (Nguồn: 4-page-C2P.docx, trang 24).",
+        "n_contexts": 5,
+        "ttft": 6.077399335998052,
+        "latency": 6.086555418994976,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Chính sách bảo mật của ứng dụng VaxyReach được cập nhật lần cuối vào ngày nào?",
+        "answer": "Chính sách bảo mật của ứng dụng VaxyReach được cập nhật lần cuối vào ngày 15 tháng 01 năm 2026 (Nguồn: 4-page-C2P.docx, trang 26).",
+        "n_contexts": 5,
+        "ttft": 6.208465253002942,
+        "latency": 6.330763628000568,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Ai là tác giả của tài liệu hướng dẫn làm video cho cuộc thi Conquer?",
+        "answer": "Tác giả của tài liệu hướng dẫn làm video cho cuộc thi Conquer là Nguyễn Đặng Duy Tân (Nguồn: Video_Guildelines.pdf, trang 1).",
+        "n_contexts": 5,
+        "ttft": 5.73109391899925,
+        "latency": 5.831460585999594,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Theo tài liệu hướng dẫn làm video, người trình bày nên đáp ứng ba điều kiện cơ bản nào?",
+        "answer": "Theo tài liệu hướng dẫn làm video, người trình bày nên đáp ứng ba điều kiện cơ bản sau (Nguồn: Video_Guildelines.pdf, page 10):\n*   Hiểu rõ phần nội dung mình trình bày;\n*   Diễn đạt mạch lạc, dễ hiểu;\n*   Giữ được nhịp trình bày ổn định.",
+        "n_contexts": 5,
+        "ttft": 4.855603834999783,
+        "latency": 4.885394835000625,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Những lỗi thường gặp khi làm video theo hướng đi làm là gì?",
+        "answer": "Khi làm video theo hướng đi làm, nhóm thường gặp một số lỗi sau (Nguồn: Video_Guildelines.pdf, trang 6):\n\n*   Dành quá nhiều thời gian cho mở đầu, nhưng lại quá ít thời gian cho phần demo.\n*   Nói rất nhiều về ý tưởng, nhưng không cho người xem thấy sản phẩm đang chạy.\n*   Demo có chạy, nhưng không giải thích người xem đang nhìn thấy điều gì.\n*   Trình bày giao diện hoặc code quá nhỏ, người xem không theo dõi được.\n*   Nhấn quá mạnh vào mặt \"ý tưởng tương lai\", trong khi phiên bản hiện tại còn chưa rõ.\n\nNhững lỗi này dễ tạo cảm giác nhóm nói nhiều hơn làm, dù thực tế nhóm có thể đã làm được một phần đáng kể.",
+        "n_contexts": 5,
+        "ttft": 4.036154502005957,
+        "latency": 4.208701919000305,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Chuỗi Gregory-Leibniz được dùng để ước lượng giá trị gì, và với n=1000 thì kết quả xấp xỉ bao nhiêu?",
+        "answer": "Chuỗi Gregory-Leibniz được dùng để ước lượng giá trị của PI (số pi).\n\nVới n=1000, kết quả xấp xỉ là 3.142593654340044. (Nguồn: Documents_2026-4_M01W01 - Basic Python (String and Loops~Text preprocessing)_[Slide_v3]-Loops-in-Python.pdf, trang 27)",
+        "n_contexts": 5,
+        "ttft": 5.875773961000959,
+        "latency": 6.037520420002693,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Trong ví dụ vòng lặp while True dùng random.randint, chương trình thoát khỏi vòng lặp khi nào?",
+        "answer": "Trong ví dụ vòng lặp `while True` sử dụng `random.randint`, chương trình sẽ thoát khỏi vòng lặp khi số `num` được sinh ra ngẫu nhiên có giá trị bằng 5. Lệnh `break` được thực thi khi điều kiện `num == 5` là đúng. (Nguồn: Documents_2026-4_M01W01 - Basic Python (String and Loops~Text preprocessing)_[Slide_v3]-Loops-in-Python.pdf, trang 37)",
+        "n_contexts": 5,
+        "ttft": 6.329673544001707,
+        "latency": 6.493924461006827,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Hàm range trong Python nhận những tham số nào để sinh dãy số?",
+        "answer": "Xin lỗi, thông tin này không có trong tài liệu của hệ thống.",
+        "n_contexts": 0,
+        "ttft": 2.6905625850049546,
+        "latency": 2.741334001002542,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 0.0
+        }
+      },
+      {
+        "question": "Theo dòng thời gian lịch sử Python trong slide, Python 1.0 được phát hành vào thời điểm nào?",
+        "answer": "Theo slide, Python 1.0 được phát hành vào tháng 01/1994 (Nguồn: Documents_2026-5_M01W01 - Basic Python (Branching~Rule-based Chatbot)_[Slide_v4]-BasicPython.pdf, trang 4).",
+        "n_contexts": 5,
+        "ttft": 4.321887168000103,
+        "latency": 4.423857585003134,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Hàm softmax biến đổi một vector thành dạng gì và tổng các giá trị đầu ra bằng bao nhiêu?",
+        "answer": "Hàm softmax biến đổi một vector thành các giá trị xác suất. Tổng các giá trị đầu ra của hàm softmax bằng 1. (Nguồn: Documents_2026-5_M01W01 - Basic Python (Branching~Rule-based Chatbot)_[Slide_v4]-BasicPython.pdf, trang 25)",
+        "n_contexts": 4,
+        "ttft": 6.242949669998779,
+        "latency": 6.351440336999076,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Trong ví dụ chatbot dựa trên luật (rule-based) GEARVN, hệ thống xử lý đầu vào của khách hàng theo luồng nào?",
+        "answer": "Trong ví dụ chatbot dựa trên luật GEARVN, hệ thống xử lý đầu vào của khách hàng theo luồng sau:\n\n1.  **Chào hỏi:** Chatbot gửi lời chào như \"Hi / Hello / Xin chào\" và hỏi \"Xin chào quý khách! Tôi có thể giúp gì cho quý khách?\".\n2.  **Lựa chọn vấn đề:** Khách hàng sẽ chọn vấn đề quan tâm từ các lựa chọn được đưa ra, ví dụ: \"Tra cứu bảo hành\", \"Tư vấn mua hàng\", hoặc \"Hỗ trợ kỹ thuật\".\n3.  **Phân nhánh hội thoại:** Dựa trên lựa chọn của khách hàng, cuộc hội thoại sẽ tiếp tục phân nhánh. Ví dụ:\n    *   Nếu chọn \"Tư vấn mua hàng\", chatbot sẽ hỏi \"Quý khách muốn mua sản phẩm nào ạ?\" và đưa ra các lựa chọn như \"Điện thoại\", \"Laptop\", \"Máy tính bảng\".\n    *   Nếu chọn \"Tra cứu bảo hành\", chatbot sẽ hỏi \"Quý khách tra cứu bằng thông tin nào ạ?\" và đưa ra các lựa chọn như \"Số điện thoại\" hoặc \"Số seri\".\n    *   Nếu chọn \"Hỗ trợ kỹ thuật\", chatbot sẽ hỏi \"Quý khách cần hỗ trợ cài đặt hay sửa chữa ạ?\" và đưa ra các lựa chọn tương ứng.\n\n(Nguồn: Documents_2026-5_M01W01 - Basic Python (Branching~Rule-based Chatbot)_[Slide_v4]-BasicPython.pdf, trang 41, 42)",
+        "n_contexts": 5,
+        "ttft": 6.21624633600004,
+        "latency": 6.635527462000027,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Trong cơ sở dữ liệu, bốn thao tác CRUD là gì?",
+        "answer": "Trong cơ sở dữ liệu, bốn thao tác CRUD là:\n*   **Create** (Tạo mới)\n*   **Read** (Đọc/Truy xuất)\n*   **Update** (Cập nhật)\n*   **Delete** (Xóa)\n\n(Nguồn: Documents_2026-5_M01W01 - Basic SQL (PosgreSQL)_[Slides_v4]-BasicSQL.pdf, trang 9)",
+        "n_contexts": 5,
+        "ttft": 6.313691087001644,
+        "latency": 6.438695003002067,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Trong ví dụ tạo cơ sở dữ liệu của bài Basic SQL, bảng Customers gồm những cột nào?",
+        "answer": "Trong ví dụ tạo cơ sở dữ liệu của bài Basic SQL, bảng `customers` gồm các cột sau: `customer_id`, `zip`, `city`, `signup_date`, `gender`, `age_group`, `acquisition_channel`. (Nguồn: Documents_2026-5_M01W01 - Basic SQL (PosgreSQL)_[Slides_v4]-BasicSQL.pdf, trang 58)",
+        "n_contexts": 5,
+        "ttft": 5.823228128007031,
+        "latency": 5.9790181280041,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Zen of Python gồm bao nhiêu nguyên tắc, do ai viết và xem bằng lệnh nào?",
+        "answer": "Zen of Python gồm 19 nguyên tắc, được viết bởi Tim Peters trong PEP 20. Bạn có thể xem các nguyên tắc này bằng cách gõ lệnh `import this` trong Python. (Nguồn: Documents_2026-5_M01W02 - Coding Methodology_[Slide_v3]-Coding-Methodology-Python.pdf, trang 22)",
+        "n_contexts": 5,
+        "ttft": 5.620262001997617,
+        "latency": 6.067197543998191,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Năm nguyên lý cốt lõi để viết code tốt được nêu trong bài Coding Methodology là gì?",
+        "answer": "Trong bài Coding Methodology, năm nguyên lý cốt lõi để viết code tốt bao gồm (Nguồn: Documents_2026-5_M01W02 - Coding Methodology_[Slide_v3]-Coding-Methodology-Python.pdf, trang 33):\n\n*   **DRY (Don't Repeat Yourself)**: Mỗi kiến thức định nghĩa một lần duy nhất.\n*   **KISS (Keep It Simple, Stupid)**: Luôn chọn giải pháp đơn giản nhất.\n*   **YAGNI (You Ain't Gonna Need It)**: Không thêm tính năng khi chưa cần.\n*   **Defensive Programming**: Luôn validate input, xử lý lỗi rõ ràng.\n*   **SoC (Separation of Concerns)**: Mỗi module một trách nhiệm, tách biệt rõ ràng.",
+        "n_contexts": 5,
+        "ttft": 5.75350712799991,
+        "latency": 6.047255669000151,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Theo PEP-8, biến và hàm, class, và hằng số dùng quy ước đặt tên nào?",
+        "answer": "Theo PEP-8, các quy tắc đặt tên như sau (Nguồn: Documents_2026-5_M01W02 - Coding Methodology_[Slide_v3]-Coding-Methodology-Python.pdf, page 12):\n\n*   **Biến và Hàm:** Sử dụng `snake_case` (ví dụ: `user_name`, `calculate_total`).\n*   **Class:** Sử dụng `PascalCase` (ví dụ: `UserAccount`).\n*   **Hằng số:** Sử dụng `UPPER_CASE` (ví dụ: `MAX_RETRY`, `DATABASE_URL`).",
+        "n_contexts": 5,
+        "ttft": 5.744302211001923,
+        "latency": 5.980368502001511,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "File CLAUDE.md dùng để làm gì khi code với Claude Code?",
+        "answer": "File `CLAUDE.md` dùng để thiết lập ngữ cảnh cho AI (như Claude Code) hiểu về project của bạn. Nó là một file văn bản đặt trong thư mục `.claude/` của project và đóng vai trò như \"bộ nhớ\" của AI về codebase.\n\nKhi AI đọc code, nó sẽ đọc file này trước để nắm được:\n*   Các công nghệ đang sử dụng (ví dụ: Python, FastAPI, PostgreSQL).\n*   Các quy ước trong project (ví dụ: cách đặt tên hàm/class, quy tắc không dùng `print()`, yêu cầu về type hints và docstring).\n*   Cấu trúc thư mục của project.\n\nViệc này giúp AI sinh ra code chính xác và phù hợp với phong cách cũng như quy tắc của project. (Nguồn: Documents_2026-5_M01W02 - Coding Methodology_[Slide_v3]-Coding-Methodology-Python.pdf, trang 45, 46)",
+        "n_contexts": 5,
+        "ttft": 5.193198377004592,
+        "latency": 5.481230169003538,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Trong ERD, các loại quan hệ (relationship) giữa hai thực thể gồm những loại nào?",
+        "answer": "Trong ERD (sơ đồ thực thể - mối quan hệ), các loại quan hệ giữa hai thực thể gồm có (Nguồn: Documents_2026-5_M01W02 - Data Extraction_Retrieval Using SQL_[Slides_v3]-DataExtractionSQL.pdf, trang 8):\n\n*   **Một - Một (1:1)**\n*   **Một - Nhiều (1:N)**\n*   **Nhiều - Một (N:1)**\n*   **Nhiều - Nhiều (M:N)**",
+        "n_contexts": 5,
+        "ttft": 5.534616878001543,
+        "latency": 5.99094300300203,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Một quan hệ ở dạng chuẩn 1NF (First Normal Form) khi nào?",
+        "answer": "Một quan hệ ở dạng chuẩn 1NF (First Normal Form) khi tất cả các thuộc tính của nó có giá trị nguyên tố (atomic value). Điều này có nghĩa là mỗi ô chỉ chứa một giá trị duy nhất và không chứa các thuộc tính đa trị (multi-valued attributes). Ngoài ra, mỗi bản ghi (record) trong quan hệ phải là duy nhất. (Nguồn: Documents_2026-5_M01W02 - Data Extraction_Retrieval Using SQL_[Slides_v3]-DataExtractionSQL.pdf, trang 33, 35)",
+        "n_contexts": 5,
+        "ttft": 7.186301128997002,
+        "latency": 7.425365169998258,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Các hàm tổng hợp (aggregation) cơ bản trong SQL được giới thiệu gồm những hàm nào?",
+        "answer": "Các hàm tổng hợp (aggregation) cơ bản trong SQL bao gồm:\n*   `COUNT(*)`: Đếm số lượng hàng.\n*   `SUM(quantity)`: Tính tổng các giá trị trong cột `quantity`.\n*   `AVG(unit_price)`: Tính giá trị trung bình trong cột `unit_price`.\n*   `MIN(unit_price)`: Tìm giá trị thấp nhất trong cột `unit_price`.\n*   `MAX(unit_price)`: Tìm giá trị cao nhất trong cột `unit_price`.\n\n(Nguồn: Documents_2026-5_M01W02 - Data Extraction_Retrieval Using SQL_[Slides_v3]-DataExtractionSQL.pdf, trang 69)",
+        "n_contexts": 5,
+        "ttft": 4.857885919002001,
+        "latency": 5.158846377002192,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Dựa trên mức độ cấu trúc, dữ liệu được phân thành ba loại nào?",
+        "answer": "Dựa trên mức độ cấu trúc, dữ liệu được phân thành ba loại:\n\n*   **Dữ liệu có cấu trúc (Structured Data)**: Dữ liệu được tổ chức theo định dạng đã được xác định trước để dễ dàng truy cập hiệu quả. (Nguồn: Documents_2026-5_M01W02 - Image and Video Data_[Slide_v2]-Image-Video-Data.pdf, trang 5)\n*   **Dữ liệu bán cấu trúc (Semi-structured Data)**: Dữ liệu không được tổ chức chặt chẽ như dữ liệu có cấu trúc nhưng có một mức độ cấu trúc nhất định dưới dạng thẻ, phân cấp hoặc các mẫu khác. (Nguồn: Documents_2026-5_M01W02 - Image and Video Data_[Slide_v2]-Image-Video-Data.pdf, trang 8)\n*   **Dữ liệu phi cấu trúc (Unstructured Data)**. (Nguồn: Documents_2026-5_M01W02 - Image and Video Data_[Slide_v2]-Image-Video-Data.pdf, trang 12)",
+        "n_contexts": 5,
+        "ttft": 5.531726543995319,
+        "latency": 6.215136876999168,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Theo bài Image and Video Data, một ảnh số (digital image) được biểu diễn như thế nào?",
+        "answer": "Theo bài Image and Video Data, một ảnh số được biểu diễn dưới dạng một ma trận gồm nhiều phần tử ảnh nhỏ (pixel). Mỗi pixel được biểu diễn bằng một giá trị số, mang thông tin về màu sắc và độ sáng của nó. (Nguồn: Documents_2026-5_M01W02 - Image and Video Data_[Slide_v2]-Image-Video-Data.pdf, trang 27, 25)",
+        "n_contexts": 5,
+        "ttft": 5.443980002994067,
+        "latency": 5.609506877997774,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Bit depth (độ sâu màu) 8-bit và 24-bit biểu diễn được bao nhiêu màu?",
+        "answer": "Độ sâu màu 8-bit có thể biểu diễn 256 màu, trong khi độ sâu màu 24-bit có thể biểu diễn 16,7 triệu màu (màu thật). (Nguồn: Documents_2026-5_M01W02 - Image and Video Data_[Slide_v2]-Image-Video-Data.pdf, trang 33)",
+        "n_contexts": 5,
+        "ttft": 5.132501334999688,
+        "latency": 5.300674584999797,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Tuyên ngôn Agile (Agile Manifesto) đề cao những giá trị nào?",
+        "answer": "Tuyên ngôn Phát triển Phần mềm Linh hoạt (Agile Manifesto) đề cao các giá trị sau (Nguồn: Documents_2026-5_M01W01 - Teamwork Tools (Overleaf, Jira, agile_scrum)_[Slide_v3]-Teamwork-Tools.pdf, trang 12):\n\n*   **Cá nhân và tương tác** hơn là quy trình và công cụ\n*   **Phần mềm chạy được** hơn là tài liệu đầy đủ\n*   **Hợp tác với khách hàng** hơn là đàm phán hợp đồng\n*   **Phản hồi với thay đổi** hơn là bám sát kế hoạch\n\nMặc dù các yếu tố ở vế phải vẫn có giá trị, nhưng Tuyên ngôn Agile đánh giá cao các yếu tố ở vế trái hơn.",
+        "n_contexts": 5,
+        "ttft": 5.001710794000246,
+        "latency": 5.146108961002028,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Một Scrum Team gồm những vai trò nào?",
+        "answer": "Một Scrum Team bao gồm: Scrum Master, Product Owner và Developers. (Nguồn: Documents_2026-5_M01W01 - Teamwork Tools (Overleaf, Jira, agile_scrum)_[Slide_v3]-Teamwork-Tools.pdf, trang 22)",
+        "n_contexts": 5,
+        "ttft": 5.236920835006458,
+        "latency": 5.336043876006443,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Bốn sự kiện (events) trong một Sprint của Scrum là gì?",
+        "answer": "Bốn sự kiện trong một Sprint của Scrum là:\n\n1.  **Sprint Planning** (Lập kế hoạch Sprint): Quyết định Mục tiêu Sprint, công việc cần làm và cách tiếp cận.\n2.  **Daily Scrum** (Họp Scrum hàng ngày): Kiểm tra tiến độ hàng ngày và điều chỉnh kế hoạch.\n3.  **Sprint Review** (Sơ kết Sprint): Kiểm tra kết quả Sprint với các bên liên quan và thu thập phản hồi.\n4.  **Sprint Retrospective** (Cải tiến Sprint): Đánh giá về tinh thần làm việc nhóm và quy trình, sau đó quyết định những cải tiến cho Sprint tiếp theo.\n\n(Nguồn: Documents_2026-5_M01W01 - Teamwork Tools (Overleaf, Jira, agile_scrum)_[Slide_v3]-Teamwork-Tools.pdf, trang 28)",
+        "n_contexts": 5,
+        "ttft": 4.595738001997233,
+        "latency": 4.876127919000282,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      },
+      {
+        "question": "Theo khảo sát của Asana được trích trong bài Teamwork Tools, bao nhiêu phần trăm thời gian của nhân viên dành cho busywork?",
+        "answer": "Theo khảo sát của Asana Work Innovation Lab trong báo cáo State of Work Innovation Report, 53% thời gian của nhân viên được dành cho busywork (công việc bận rộn). (Nguồn: Documents_2026-5_M01W01 - Teamwork Tools (Overleaf, Jira, agile_scrum)_[Slide_v3]-Teamwork-Tools.pdf, trang 5)",
+        "n_contexts": 5,
+        "ttft": 6.143061169001157,
+        "latency": 6.2493780860022525,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0
+        }
+      }
+    ]
+  }
+}

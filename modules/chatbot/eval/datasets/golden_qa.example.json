@@ -1,0 +1,17 @@
+[
+  {
+    "question": "Cross-entropy loss được định nghĩa như thế nào?",
+    "golden": [{"document_id": 12, "page": 7}],
+    "reference_answer": "Cross-entropy loss đo khoảng cách giữa phân phối dự đoán và phân phối thật, L = -sum(y_i * log(p_i))."
+  },
+  {
+    "question": "Gradient descent khác gì so với stochastic gradient descent?",
+    "golden": [{"document_id": 12, "page": 15}, {"document_id": 13, "page": 2}],
+    "reference_answer": "GD dùng toàn bộ dữ liệu cho mỗi bước cập nhật; SGD dùng một (hoặc một batch nhỏ) mẫu nên nhanh và nhiễu hơn."
+  },
+  {
+    "question": "Khi nào nên dùng L2 regularization?",
+    "golden": [{"document_id": 14}],
+    "reference_answer": "Khi mô hình overfit và muốn phạt trọng số lớn, giữ trọng số nhỏ & mượt."
+  }
+]

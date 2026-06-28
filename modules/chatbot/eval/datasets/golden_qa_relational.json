@@ -1,0 +1,42 @@
+[
+  {
+    "question": "Trong Scrum, ba vai trò (Product Owner, Scrum Master, Developers) tham gia vào các sự kiện của một Sprint như thế nào?",
+    "golden": [],
+    "reference_answer": "Product Owner quản lý và ưu tiên Product Backlog, tham gia Sprint Planning và Sprint Review để làm rõ và nghiệm thu giá trị. Scrum Master điều phối, gỡ trở ngại và đảm bảo các sự kiện diễn ra (đặc biệt chủ trì Sprint Retrospective). Developers ước lượng, tự tổ chức công việc trong Sprint, cập nhật tiến độ ở Daily Scrum và trình bày kết quả ở Sprint Review. Cả ba phối hợp xuyên suốt Sprint Planning, Daily Scrum, Sprint Review và Sprint Retrospective."
+  },
+  {
+    "question": "Agile Manifesto và khung làm việc Scrum liên hệ với nhau như thế nào?",
+    "golden": [],
+    "reference_answer": "Agile Manifesto nêu các giá trị và nguyên tắc chung (đề cao cá nhân và tương tác, phần mềm chạy được, hợp tác với khách hàng, phản hồi thay đổi). Scrum là một khung (framework) Agile cụ thể hóa các giá trị đó thành vai trò, sự kiện và artifact để triển khai theo từng Sprint ngắn, lặp và tăng dần."
+  },
+  {
+    "question": "Mối liên hệ giữa chuẩn hóa cơ sở dữ liệu (normalization, 1NF) và các thao tác CRUD là gì?",
+    "golden": [],
+    "reference_answer": "Chuẩn hóa (bắt đầu từ 1NF: mỗi ô một giá trị nguyên tử, không nhóm lặp) giảm trùng lặp dữ liệu và phụ thuộc bất thường. Nhờ đó các thao tác CRUD (Create, Read, Update, Delete) trở nên nhất quán: cập nhật một chỗ không gây mâu thuẫn, xóa không mất dữ liệu ngoài ý muốn, thêm không cần dữ liệu thừa. Tức là chuẩn hóa bảo vệ tính toàn vẹn dữ liệu khi thực hiện CRUD."
+  },
+  {
+    "question": "ERD và các dạng chuẩn (normal forms) phối hợp với nhau ra sao trong quy trình thiết kế cơ sở dữ liệu quan hệ?",
+    "golden": [],
+    "reference_answer": "ERD (Entity-Relationship Diagram) mô hình hóa các thực thể và quan hệ giữa chúng (1-1, 1-nhiều, nhiều-nhiều). Từ ERD ta chuyển thành các bảng quan hệ, rồi áp dụng các dạng chuẩn (1NF, 2NF, 3NF) để loại trùng lặp và phụ thuộc không mong muốn. ERD định hình cấu trúc, chuẩn hóa tinh chỉnh cấu trúc đó cho gọn và toàn vẹn."
+  },
+  {
+    "question": "Các nguyên lý viết code tốt trong Coding Methodology liên quan thế nào tới quy ước đặt tên PEP-8 khi viết Python?",
+    "golden": [],
+    "reference_answer": "Coding Methodology nhấn mạnh code dễ đọc, dễ bảo trì, nhất quán. PEP-8 là cách hiện thực cụ thể tinh thần đó trong Python qua quy ước đặt tên: biến và hàm dùng snake_case, class dùng PascalCase/CamelCase, hằng số dùng UPPER_CASE. Tuân thủ PEP-8 chính là áp dụng nguyên lý 'dễ đọc, nhất quán' của coding methodology."
+  },
+  {
+    "question": "Trong ví dụ rule-based chatbot (GEARVN), luồng xử lý đầu vào của khách hàng dựa trên cấu trúc rẽ nhánh (branching) trong Python như thế nào?",
+    "golden": [],
+    "reference_answer": "Rule-based chatbot xử lý đầu vào bằng các luật if/elif/else: so khớp từ khóa hoặc ý định trong câu khách hàng với các điều kiện định sẵn, mỗi điều kiện rẽ sang một câu trả lời tương ứng; nếu không khớp luật nào thì rơi vào nhánh mặc định (else). Đây chính là cấu trúc rẽ nhánh (branching) của Python áp dụng cho hội thoại."
+  },
+  {
+    "question": "Bit depth và cách một ảnh số được biểu diễn liên hệ thế nào tới số màu hiển thị được?",
+    "golden": [],
+    "reference_answer": "Ảnh số được biểu diễn bằng lưới điểm ảnh (pixel), mỗi pixel mang giá trị màu. Bit depth là số bit dùng cho mỗi pixel/kênh màu, quyết định số màu biểu diễn được: 8-bit cho 256 mức (2^8), còn 24-bit (8 bit mỗi kênh RGB) cho khoảng 16,7 triệu màu (2^24). Bit depth càng cao thì số màu càng nhiều."
+  },
+  {
+    "question": "Theo tài liệu hướng dẫn làm video cho cuộc thi, ba điều kiện người trình bày cần đáp ứng và các lỗi thường gặp gắn kết với nhau ra sao để tạo một video tốt?",
+    "golden": [],
+    "reference_answer": "Ba điều kiện cơ bản của người trình bày (ví dụ: nói rõ ràng/tự tin, hiểu nội dung, hình/âm thanh đạt yêu cầu) là tiêu chí cần đạt; các lỗi thường gặp (như nói lan man, đọc theo slide, âm thanh/hình ảnh kém, vượt thời lượng) chính là vi phạm các điều kiện đó. Tránh các lỗi này tức là đáp ứng các điều kiện, nhờ đó tạo được video tốt."
+  }
+]

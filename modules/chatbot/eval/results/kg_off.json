@@ -1,0 +1,170 @@
+{
+  "meta": {
+    "n": 8,
+    "top_k": 5,
+    "top_n": 30,
+    "rrf_k": 60
+  },
+  "retrieval": {
+    "hybrid": {
+      "recall": NaN,
+      "precision": NaN,
+      "mrr": NaN,
+      "hit": NaN,
+      "ndcg": NaN,
+      "map": NaN,
+      "empty": 0,
+      "success_rate": 1.0
+    }
+  },
+  "generation": {
+    "agg": {
+      "ttft_p50": 7.604780065999876,
+      "ttft_p95": 11.632416198849931,
+      "latency_p50": 8.57600431550054,
+      "latency_p95": 13.769679541300228,
+      "faithfulness": 0.84125,
+      "answer_relevance": 0.95,
+      "context_precision": 0.71875,
+      "context_recall": 0.69,
+      "correctness": 0.69125,
+      "rouge_l": 0.11030776941747004,
+      "bleu": 0.014186006941761566,
+      "error_rate": 0.0,
+      "empty_rate": 0.0,
+      "success_rate": 1.0,
+      "throughput_seq_qps": 0.10938110139340843,
+      "n": 8
+    },
+    "per_question": [
+      {
+        "question": "Trong Scrum, ba vai trò (Product Owner, Scrum Master, Developers) tham gia vào các sự kiện của một Sprint như thế nào?",
+        "answer": "Trong Scrum, ba vai trò Product Owner, Scrum Master và Developers tham gia vào các sự kiện của một Sprint như sau:\n\n*   **Sprint Planning (Lập kế hoạch Sprint)**:\n    *   **Product Owner**: Quyết định mục tiêu Sprint, những công việc cần thực hiện và cách tiếp cận (Nguồn: Documents_2026-5_M01W01 - Teamwork Tools (Overleaf, Jira, agile_scrum)_[Slide_v3]-Teamwork-Tools.pdf, trang 17, 28).\n    *   **Developers**: Lập kế hoạch cho Sprint (Sprint Backlog), lựa chọn các mục từ Product Backlog cho Sprint sắp tới và quyết định cách thực hiện công việc (Nguồn: Documents_2026-5_M01W01 - Teamwork Tools (Overleaf, Jira, agile_scrum)_[Slide_v3]-Teamwork-Tools.pdf, trang 21, 23, 28).\n    *   **Scrum Master**: Hướng dẫn quy trình (Nguồn: Documents_2026-5_M01W01 - Teamwork Tools (Overleaf, Jira, agile_scrum)_[Slide_v3]-Teamwork-Tools.pdf, trang 22).\n\n*   **Daily Scrum (Họp Scrum Hàng ngày)**:\n    *   **Developers**: Điều chỉnh kế hoạch hàng ngày hướng tới Mục tiêu Sprint thông qua cuộc họp kiểm tra tiến độ ngắn gọn (Nguồn: Documents_2026-5_M01W01 - Teamwork Tools (Overleaf, Jira, agile_scrum)_[Slide_v3]-Teamwork-Tools.pdf, trang 23, 28).\n    *   **Scrum Master**: Hướng dẫn quy trình (Nguồn: Documents_2026-5_M01W01 - Teamwork Tools (Overleaf, Jira, agile_scrum)_[Slide_v3]-Teamwork-Tools.pdf, trang 22).\n\n*   **Sprint Review (Sơ kết Sprint)**:\n    *   **Product Owner**: Kiểm tra kết quả Sprint với các bên liên quan và thu thập phản hồi (Nguồn: Documents_2026-5_M01W01 - Teamwork Tools (Overleaf, Jira, agile_scrum)_[Slide_v3]-Teamwork-Tools.pdf, trang 28).\n    *   **Developers**: Tạo ra Increment có thể sử dụng được (Nguồn: Documents_2026-5_M01W01 - Teamwork Tools (Overleaf, Jira, agile_scrum)_[Slide_v3]-Teamwork-Tools.pdf, trang 23).\n    *   **Scrum Master**: Hướng dẫn quy trình (Nguồn: Documents_2026-5_M01W01 - Teamwork Tools (Overleaf, Jira, agile_scrum)_[Slide_v3]-Teamwork-Tools.pdf, trang 22).\n\n*   **Sprint Retrospective (Cải thiện Sprint)**:\n    *   **Developers**: Phản ánh về tinh thần làm việc nhóm và quy trình, sau đó quyết định các cải tiến cho Sprint tiếp theo (Nguồn: Documents_2026-5_M01W01 - Teamwork Tools (Overleaf, Jira, agile_scrum)_[Slide_v3]-Teamwork-Tools.pdf, trang 28).\n    *   **Scrum Master**: Hướng dẫn quy trình, giúp nhóm phản ánh và quyết định các cải tiến (Nguồn: Documents_2026-5_M01W01 - Teamwork Tools (Overleaf, Jira, agile_scrum)_[Slide_v3]-Teamwork-Tools.pdf, trang 22, 28).",
+        "n_contexts": 5,
+        "ttft": 9.57711996299986,
+        "latency": 11.298795839000377,
+        "rouge_l": 0.10075566750629722,
+        "bleu": 0.0003106135081133014,
+        "judge": {
+          "faithfulness": 0.9,
+          "answer_relevance": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 0.67,
+          "correctness": 0.75
+        }
+      },
+      {
+        "question": "Agile Manifesto và khung làm việc Scrum liên hệ với nhau như thế nào?",
+        "answer": "Scrum là một framework phổ biến cho các đội phát triển phần mềm theo Agile. Scrum là một phương pháp luận Agile và là phương pháp phổ biến nhất, được 63% người dùng Agile ở cấp độ nhóm theo khảo sát của Digital.ai vào năm 2024. (Nguồn: Documents_2026-5_M01W01 - Teamwork Tools (Overleaf, Jira, agile_scrum)_[Slide_v3]-Teamwork-Tools.pdf, trang 16)",
+        "n_contexts": 5,
+        "ttft": 5.669428877999962,
+        "latency": 5.83546758599914,
+        "rouge_l": 0.15384615384615385,
+        "bleu": 0.0006104021755948267,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 0.6,
+          "context_precision": 0.7,
+          "context_recall": 0.6,
+          "correctness": 0.4
+        }
+      },
+      {
+        "question": "Mối liên hệ giữa chuẩn hóa cơ sở dữ liệu (normalization, 1NF) và các thao tác CRUD là gì?",
+        "answer": "Chuẩn hóa cơ sở dữ liệu, đặc biệt là dạng chuẩn 1NF, có mối liên hệ mật thiết với các thao tác CRUD (Create, Read, Update, Delete) thông qua việc giảm thiểu các bất thường (anomalies) trong cơ sở dữ liệu.\n\nCụ thể:\n*   **1NF (Dạng chuẩn thứ nhất)** yêu cầu tất cả các thuộc tính trong một quan hệ phải có giá trị nguyên tử (atomic value), nghĩa là mỗi ô chỉ chứa một giá trị duy nhất và không có thuộc tính đa trị (multi-valued attributes). Mỗi bản ghi cũng phải là duy nhất. (Nguồn: Documents_2026-5_M01W02 - Data Extraction_Retrieval Using SQL_[Slides_v3]-DataExtractionSQL.pdf, trang 33, 35)\n*   Việc tuân thủ 1NF giúp giảm thiểu các bất thường có thể xảy ra khi thực hiện các thao tác CRUD như:\n    *   **Bất thường chèn (Insert Anomaly):** Không thể thêm dữ liệu mới nếu chưa có đủ thông tin cho các thuộc tính khóa hoặc các thuộc tính khác.\n    *   **Bất thường cập nhật (Update Anomaly):** Dữ liệu trùng lặp ở nhiều nơi có thể dẫn đến việc cập nhật không nhất quán nếu không sửa đổi tất cả các bản sao.\n    *   **Bất thường xóa (Delete Anomaly):** Việc xóa một bản ghi có thể vô tình làm mất thông tin quan trọng khác nếu dữ liệu không được tách biệt hợp lý.\n\nTóm lại, chuẩn hóa cơ sở dữ liệu (từ 1NF trở đi) được thực hiện để tổ chức dữ liệu một cách hiệu quả, giảm sự dư thừa dữ liệu và đảm bảo tính toàn vẹn của dữ liệu, từ đó làm cho các thao tác CRUD trở nên đáng tin cậy và ít gây lỗi hơn. (Nguồn: Documents_2026-5_M01W02 - Data Extraction_Retrieval Using SQL_[Slides_v3]-DataExtractionSQL.pdf, trang 29)",
+        "n_contexts": 5,
+        "ttft": 8.413479628999994,
+        "latency": 9.623155630000838,
+        "rouge_l": 0.15934065934065933,
+        "bleu": 0.05834718375889606,
+        "judge": {
+          "faithfulness": 0.5,
+          "answer_relevance": 1.0,
+          "context_precision": 0.6,
+          "context_recall": 0.6,
+          "correctness": 1.0
+        }
+      },
+      {
+        "question": "ERD và các dạng chuẩn (normal forms) phối hợp với nhau ra sao trong quy trình thiết kế cơ sở dữ liệu quan hệ?",
+        "answer": "Xin lỗi, thông tin này không có trong tài liệu của hệ thống.",
+        "n_contexts": 5,
+        "ttft": 8.674215254000956,
+        "latency": 8.72163204500066,
+        "rouge_l": 0.026666666666666665,
+        "bleu": 2.569304258655721e-09,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0,
+          "context_precision": 0.8,
+          "context_recall": 0.3,
+          "correctness": 0.0
+        }
+      },
+      {
+        "question": "Các nguyên lý viết code tốt trong Coding Methodology liên quan thế nào tới quy ước đặt tên PEP-8 khi viết Python?",
+        "answer": "Các nguyên lý viết code tốt trong Coding Methodology và quy ước đặt tên PEP-8 khi viết Python có mối liên hệ mật thiết, trong đó PEP-8 là một tập hợp các hướng dẫn cụ thể để hiện thực hóa các nguyên lý chung.\n\nCụ thể:\n*   **Các nguyên lý viết code tốt** bao gồm:\n    *   **DRY (Don't Repeat Yourself)**: Mỗi kiến thức định nghĩa một lần duy nhất.\n    *   **KISS (Keep It Simple, Stupid)**: Luôn chọn giải pháp đơn giản nhất.\n    *   **YAGNI (You Ain't Gonna Need It)**: Không thêm tính năng khi chưa cần.\n    *   **Defensive**: Luôn validate input, xử lý lỗi rõ ràng.\n    *   **SoC (Separation of Concerns)**: Mỗi module một trách nhiệm, tách biệt rõ ràng.\n    (Nguồn: Documents_2026-5_M01W02 - Coding Methodology_[Slide_v3]-Coding-Methodology-Python.pdf, trang 33)\n*   **Clean Code** nhấn mạnh 4 nguyên tắc cốt lõi (RMTE): Readable (dễ đọc), Maintainable (dễ bảo trì), Testable (dễ kiểm thử), Extensible (dễ mở rộng). (Nguồn: Documents_2026-5_M01W02 - Coding Methodology_[Slide_v3]-Coding-Methodology-Python.pdf, trang 9)\n*   **The Zen of Python (PEP 20)** cũng đưa ra các triết lý như \"Beautiful is better than ugly\", \"Simple is better than complex\", và đặc biệt là \"Readability counts\" (Dễ đọc là ưu tiên số 1). (Nguồn: Documents_2026-5_M01W02 - Coding Methodology_[Slide_v3]-Coding-Methodology-Python.pdf, trang 22)\n\n**Quy ước đặt tên PEP-8** đóng góp trực tiếp vào việc đạt được các nguyên lý trên, đặc biệt là về khả năng đọc hiểu và bảo trì code:\n*   **Quy tắc đặt tên:** PEP-8 quy định `snake_case` cho biến và hàm, `PascalCase` cho class, và `UPPER_CASE` cho hằng số. Quan trọng hơn, nó khuyến khích đặt tên có ý nghĩa, giúp code dễ đọc và dễ hiểu hơn. Ví dụ, thay vì `d = 86400`, nên dùng `SECONDS_PER_DAY = 86400`. (Nguồn: Documents_2026-5_M01W02 - Coding Methodology_[Slide_v3]-Coding-Methodology-Python.pdf, trang 12)\n*   **Quy tắc định dạng:** PEP-8 cũng bao gồm các quy tắc về thụt lề (4 dấu cách), khoảng trắng quanh phép toán và độ dài dòng tối đa (88 ký tự). Những quy tắc này giúp code có bố cục nhất quán, tăng tính thẩm mỹ và dễ đọc. (Nguồn: Documents_2026-5_M01W02 - Coding Methodology_[Slide_v3]-Coding-Methodology-Python.pdf, trang 13)\n\nTóm lại, quy ước đặt tên và định dạng của PEP-8 là công cụ cụ thể giúp các lập trình viên Python tuân thủ các nguyên lý viết code tốt như Clean Code và The Zen of Python, đặc biệt là trong việc tạo ra mã nguồn dễ đọc (Readable), dễ hiểu và dễ bảo trì (Maintainable). Khi code được viết theo PEP-8, nó trở nên \"đẹp\", \"rõ ràng\" và \"dễ đọc\" hơn, góp phần vào mục tiêu chung là tạo ra phần mềm chất lượng cao.",
+        "n_contexts": 5,
+        "ttft": 12.739114171999972,
+        "latency": 15.10015538100015,
+        "rouge_l": 0.07302231237322516,
+        "bleu": 0.00026533752378050804,
+        "judge": {
+          "faithfulness": 0.35,
+          "answer_relevance": 1.0,
+          "context_precision": 0.9,
+          "context_recall": 0.9,
+          "correctness": 0.5
+        }
+      },
+      {
+        "question": "Trong ví dụ rule-based chatbot (GEARVN), luồng xử lý đầu vào của khách hàng dựa trên cấu trúc rẽ nhánh (branching) trong Python như thế nào?",
+        "answer": "Trong ví dụ chatbot rule-based (GEARVN), luồng xử lý đầu vào của khách hàng dựa trên cấu trúc rẽ nhánh (branching) trong Python được thực hiện thông qua một \"cây trò chuyện\" (chat tree).\n\nCụ thể:\n*   **Điểm khởi đầu:** Khi khách hàng bắt đầu cuộc trò chuyện (ví dụ: với các câu chào như \"Hi\", \"Hello\", \"Xin chào\"), chatbot sẽ đưa ra một lời chào chung và cung cấp các lựa chọn chính để khách hàng chọn vấn đề quan tâm (Nguồn: Documents_2026-5_M01W01 - Basic Python (Branching~Rule-based Chatbot)_[Slide_v4]-BasicPython.pdf, trang 41, 42).\n*   **Cấu trúc rẽ nhánh:** Khách hàng sẽ chọn một trong các tùy chọn này (ví dụ: \"Tra cứu bảo hành\", \"Tư vấn mua hàng\", \"Hỗ trợ kỹ thuật\"). Mỗi lựa chọn này là một nhánh (branch) mới trong cuộc trò chuyện (Nguồn: Documents_2026-5_M01W01 - Basic Python (Branching~Rule-based Chatbot)_[Slide_v4]-BasicPython.pdf, trang 42).\n*   **Nhánh con:** Tùy thuộc vào lựa chọn của khách hàng, chatbot sẽ tiếp tục đưa ra các lựa chọn cụ thể hơn. Ví dụ, nếu khách hàng chọn \"Tư vấn mua hàng\", chatbot có thể hỏi về loại sản phẩm quan tâm như \"Điện thoại\", \"Laptop\", \"Máy tính bảng\" (Nguồn: Documents_2026-5_M01W01 - Basic Python (Branching~Rule-based Chatbot)_[Slide_v4]-BasicPython.pdf, trang 42).\n*   **Triển khai bằng Python:** Trong Python, cấu trúc rẽ nhánh này thường được triển khai bằng các câu lệnh điều kiện như `if`, `elif` (else if), và `else` để kiểm tra các giá trị đầu vào hoặc lựa chọn của khách hàng và thực hiện các hành động khác nhau tùy thuộc vào giá trị đó (Nguồn: Documents_2026-5_M01W01 - Basic Python (Branching~Rule-based Chatbot)_[Slide_v4]-BasicPython.pdf, trang 33, 50). Khái niệm \"switch case\" (hoặc các cách thay thế trong Python như `match case` đối với các phiên bản Python mới hơn) cũng mô tả cách hoạt động tương tự, nơi một biểu thức được kiểm tra và các khối mã khác nhau được thực thi dựa trên kết quả khớp (Nguồn: Documents_2026-5_M01W01 - Basic Python (Branching~Rule-based Chatbot)_[Slide_v4]-BasicPython.pdf, trang 50).\n\nTóm lại, luồng xử lý đầu vào trong chatbot GEARVN là một chuỗi các quyết định có điều kiện, dẫn dắt người dùng qua một \"cây\" các lựa chọn cho đến khi đạt được thông tin hoặc hỗ trợ mong muốn.",
+        "n_contexts": 5,
+        "ttft": 6.497860834999301,
+        "latency": 8.43037658600042,
+        "rouge_l": 0.09655172413793102,
+        "bleu": 0.024305336857887737,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0,
+          "context_precision": 0.7,
+          "context_recall": 0.7,
+          "correctness": 1.0
+        }
+      },
+      {
+        "question": "Bit depth và cách một ảnh số được biểu diễn liên hệ thế nào tới số màu hiển thị được?",
+        "answer": "Độ sâu bit (bit depth), hay còn gọi là độ sâu màu (color depth), quyết định số lượng màu sắc có thể hiển thị trong một ảnh số. Nó được đo bằng bit trên mỗi pixel.\n\nMột số ví dụ về độ sâu bit và số màu tương ứng:\n*   1-bit: 2 màu (đen và trắng)\n*   8-bit: 256 màu\n*   24-bit: 16,7 triệu màu (True color)\n\n(Nguồn: Documents_2026-5_M01W02 - Image and Video Data_[Slide_v2]-Image-Video-Data.pdf, trang 33)",
+        "n_contexts": 5,
+        "ttft": 5.474355501999526,
+        "latency": 5.720573044000048,
+        "rouge_l": 0.17647058823529413,
+        "bleu": 0.0008298141861407634,
+        "judge": {
+          "faithfulness": 1.0,
+          "answer_relevance": 1.0,
+          "context_precision": 0.2,
+          "context_recall": 1.0,
+          "correctness": 0.9
+        }
+      },
+      {
+        "question": "Theo tài liệu hướng dẫn làm video cho cuộc thi, ba điều kiện người trình bày cần đáp ứng và các lỗi thường gặp gắn kết với nhau ra sao để tạo một video tốt?",
+        "answer": "Theo tài liệu hướng dẫn làm video cho cuộc thi, người trình bày cần đáp ứng ba điều kiện cơ bản để tạo ra một video tốt và tránh các lỗi thường gặp:\n\n**Ba điều kiện người trình bày cần đáp ứng:**\n1.  Hiểu rõ phần nội dung mình trình bày.\n2.  Diễn đạt mạch lạc, dễ hiểu.\n3.  Giữ được nhịp trình bày ổn định.\n(Nguồn: Video_Guildelines.pdf, trang 10)\n\n**Các lỗi thường gặp và sự gắn kết:**\nViệc không đáp ứng được các điều kiện trên có thể dẫn đến nhiều lỗi, khiến video kém hiệu quả:\n\n*   **Đối với video hướng nghiên cứu (research):** Các lỗi phổ biến bao gồm nêu bài toán quá rộng, dùng nhiều bảng biểu đồ nhưng không phân tích, đọc lại báo cáo theo kiểu học thuật khó theo dõi, dùng quá nhiều thuật ngữ mà không giải thích, hoặc nói nhiều về quy trình nhưng ít về kết quả học được. Những lỗi này làm video nặng về hình thức học thuật nhưng thiếu giá trị phân tích thực chất. (Nguồn: Video_Guildelines.pdf, trang 8)\n*   **Đối với video hướng đi làm:** Các lỗi thường gặp là dành quá nhiều thời gian cho mở đầu và quá ít cho phần demo, nói nhiều về ý tưởng nhưng không cho thấy sản phẩm chạy, demo nhưng không giải thích người xem đang nhìn thấy gì, trình bày giao diện hoặc code quá nhỏ, hoặc nhấn mạnh \"ý tưởng tương lai\" khi phiên bản hiện tại chưa rõ. Những lỗi này dễ tạo cảm giác nhóm nói nhiều hơn làm. (Nguồn: Video_Guildelines.pdf, trang 6)\n\n**Sự gắn kết:**\nBa điều kiện của người trình bày gắn kết với các lỗi thường gặp ở chỗ: khi người trình bày **hiểu rõ nội dung**, họ sẽ giải thích các thuật ngữ khó, tập trung vào phân tích kết quả thay vì chỉ đọc lại báo cáo (hướng research), và biết cách trình bày rõ ràng sản phẩm đang chạy thay vì chỉ nói về ý tưởng (hướng đi làm). Khi họ có khả năng **diễn đạt mạch lạc, dễ hiểu**, người xem sẽ dễ dàng theo dõi, tránh được tình trạng giao diện/code quá nhỏ hay demo không giải thích. Cuối cùng, việc **giữ nhịp trình bày ổn định** giúp video không bị đứt mạch, giữ được sự gắn kết tổng thể.\n\nTài liệu cũng nhấn mạnh rằng một video chỉn chu thường đến từ việc luyện tập trước khi ghi hình, giúp người trình bày đạt được các điều kiện và tránh mắc phải những lỗi này.",
+        "n_contexts": 5,
+        "ttft": 6.796080502999757,
+        "latency": 8.408621046000917,
+        "rouge_l": 0.09580838323353294,
+        "bleu": 0.028819364954375072,
+        "judge": {
+          "faithfulness": 0.98,
+          "answer_relevance": 1.0,
+          "context_precision": 0.85,
+          "context_recall": 0.75,
+          "correctness": 0.98
+        }
+      }
+    ]
+  }
+}
