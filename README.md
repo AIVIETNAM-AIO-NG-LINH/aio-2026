@@ -10,7 +10,22 @@
 
 `ai-aio` chạy **cạnh `api-aio`** trong stack `nginx-aio`: dùng chung MariaDB (DB `api_ai`), Redis (broker Celery) và mạng docker `aio-net`. Dịch vụ **không publish cổng ra host** — mọi truy cập đi qua reverse-proxy `nginx-aio` tại `http://ai.localhost:8000`.
 
-Tài liệu này giới thiệu **cấu trúc tổng thể** và **cách chạy code**; nó chỉ mô tả **luồng AI** của hệ. Chi tiết sâu của từng tính năng nằm ở README riêng trong mỗi module (xem bảng [Các module](#các-module)).
+Tài liệu này giới thiệu **cấu trúc tổng thể** và **cách chạy code**; nó chỉ mô tả **luồng AI** của hệ. Chi tiết sâu của từng tính năng nằm ở README riêng trong mỗi module (xem danh sách ngay dưới).
+
+---
+
+## 📚 Tài liệu chi tiết từng module
+
+**chatbot** là module **tính năng AI** (trọng tâm của repo); **base / core / example / media** là **khung & hạ tầng dùng chung** để dựng module AI — không phải nghiệp vụ ngoài AI. Mọi module theo cùng layout Laravel. Bấm vào link để xem tài liệu chi tiết (kèm sơ đồ luồng ở module chatbot):
+
+| Module | Tài liệu |
+|---|---|
+| 🧩 **base** — lớp nền dùng chung (middleware, base model/repo/service/transformer, clients, exceptions) | [modules/base/README.md](modules/base/README.md) |
+| ❤️ **core** — health check + khung module tối thiểu | [modules/core/README.md](modules/core/README.md) |
+| 📦 **example** — module mẫu CRUD (khuôn để tạo module mới) | [modules/example/README.md](modules/example/README.md) |
+| 🗂️ **media** — model media read-only (bảng của api-aio) | [modules/media/README.md](modules/media/README.md) |
+| 🤖 **chatbot** — module AI chính: RAG chat (SSE), ingest, KG, mind map, quota, realtime (có sơ đồ luồng) | [modules/chatbot/README.md](modules/chatbot/README.md) |
+| 📊 **chatbot / eval** — đánh giá chất lượng RAG | [modules/chatbot/eval/README.md](modules/chatbot/eval/README.md) |
 
 ---
 
@@ -62,7 +77,7 @@ Ràng buộc trong [config/settings.py](config/settings.py):
 ```
 ai-aio/
 ├── config/               # dự án Django: settings.py, urls.py (định tuyến gốc), wsgi/asgi, celery
-├── modules/              # các Django app (mỗi tính năng 1 module — xem bên dưới)
+├── modules/              # các Django app (mỗi tính năng 1 module — tài liệu ở đầu README)
 │   ├── base/             # nền tảng dùng chung (middleware, exceptions, DTO, auth helpers)
 │   ├── core/             # tiện ích lõi + health check
 │   ├── example/          # module mẫu (CRUD) — khuôn để tạo module mới
@@ -83,22 +98,6 @@ ai-aio/
 | `api/` | `modules.example.routes.public` | `/api/examples/` CRUD (DefaultRouter) |
 | `api/v1/chatbot/` | `modules.chatbot.routes.v1.public` | chat / conversations |
 | `api/internal/v1/chatbot/` | `modules.chatbot.routes.v1.internal` | documents ingest / purge (nội bộ) |
-
----
-
-## Các module
-
-**chatbot** là module **tính năng AI** (trọng tâm của repo); **base / core / example / media** là **khung & hạ tầng dùng chung** để dựng module AI — không phải nghiệp vụ ngoài AI. Mọi module theo cùng layout Laravel.
-
-| Module | Vai trò | Tài liệu chi tiết |
-|---|---|---|
-| **base** | Nền tảng dùng chung: `VerifyInternalToken`, `ensure_authenticated`/`authenticate_optional`, `CurrentUser`, exception handler, DTO/base repository. | [modules/base/README.md](modules/base/README.md) |
-| **core** | Tiện ích lõi + endpoint health check. | [modules/core/README.md](modules/core/README.md) |
-| **example** | Module mẫu CRUD — khuôn mẫu để thêm module mới. | [modules/example/README.md](modules/example/README.md) |
-| **media** | Metadata & tham chiếu media (file đính kèm trong chat). | [modules/media/README.md](modules/media/README.md) |
-| **chatbot** | Chatbot RAG có trích dẫn (SSE), ingest tài liệu (Celery), mind map, reasoning, knowledge graph, token quota, realtime. | [modules/chatbot/README.md](modules/chatbot/README.md) |
-
-Module chatbot còn có công cụ đánh giá RAG riêng: [modules/chatbot/eval/README.md](modules/chatbot/eval/README.md).
 
 ---
 
