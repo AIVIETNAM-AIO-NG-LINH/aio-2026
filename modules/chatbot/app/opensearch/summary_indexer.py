@@ -13,8 +13,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from modules.base.clients.gemini_client import GeminiClient
-from modules.base.clients.opensearch_client import BaseOpenSearchClient
+from modules.base.app.clients.gemini_client import GeminiClient
+from modules.base.app.clients.opensearch_client import BaseOpenSearchClient
 
 from ..rag.embedder import embed_chunks
 

@@ -10,7 +10,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from modules.base.repositories import BaseRepository
+from modules.base.app.repositories import BaseRepository
 
 from ..models import ChatMessageFile
 

@@ -20,7 +20,7 @@ from typing import Any, Callable
 
 from opensearchpy import helpers
 
-from modules.base.clients.opensearch_client import BaseOpenSearchClient
+from modules.base.app.clients.opensearch_client import BaseOpenSearchClient
 
 logger = logging.getLogger(__name__)
 

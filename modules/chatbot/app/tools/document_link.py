@@ -23,7 +23,7 @@ def get_url(media_id: int) -> dict | None:
     `url` có thể None nếu thiếu cấu hình S3.
     """
     try:
-        from modules.media.repositories import MediaRepository
+        from modules.media.app.repositories import MediaRepository
 
         media = MediaRepository().find(int(media_id))
     except (TypeError, ValueError):

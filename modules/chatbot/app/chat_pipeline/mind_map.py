@@ -23,7 +23,7 @@ from typing import Any
 
 from google.genai import types
 
-from modules.base.clients.gemini_client import GeminiClient
+from modules.base.app.clients.gemini_client import GeminiClient
 
 logger = logging.getLogger(__name__)
 

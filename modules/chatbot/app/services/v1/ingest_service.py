@@ -10,7 +10,7 @@ from __future__ import annotations
 from rest_framework import status as http_status
 from rest_framework.response import Response
 
-from modules.base.services import BaseService
+from modules.base.app.services import BaseService
 
 from ...contracts.services.v1 import IngestDocumentServiceInterface
 from ...http.requests.v1 import IngestDocumentDTO

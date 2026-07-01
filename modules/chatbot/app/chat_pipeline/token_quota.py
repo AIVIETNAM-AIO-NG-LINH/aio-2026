@@ -1,7 +1,7 @@
 """Client hạn mức TOKEN chat của member — gọi api-aio (service-to-service).
 
 api-aio giữ hạn mức token/ngày của member, expose 2 endpoint NỘI BỘ (gate
-`X-Internal-Token`, route qua nginx-aio — xem `modules.base.clients.internal`):
+`X-Internal-Token`, route qua nginx-aio — xem `modules.base.app.clients.internal`):
 
   - POST /api/internal/v1/chatbot/tokens/check   {user_id}
         → {allowed, unlimited, limit, used, remaining}   (KHÔNG trừ)
@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 
-from modules.base.clients.internal import call_api
+from modules.base.app.clients.internal import call_api
 
 logger = logging.getLogger(__name__)
 

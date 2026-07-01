@@ -542,7 +542,7 @@ class Command(BaseCommand):
         faithfulness, answer_relevance, context_precision, context_recall, correctness.
         context_recall/correctness cần REFERENCE; nếu không có reference thì để None.
         """
-        from modules.base.clients.gemini_client import GeminiClient
+        from modules.base.app.clients.gemini_client import GeminiClient
 
         ctx = "\n\n".join((c.get("chunk_text") or "") for c in contexts).strip() or "(không có ngữ cảnh)"
         if not answer:

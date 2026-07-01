@@ -17,9 +17,9 @@ def get_embedding_client():
     """Trả client embedding theo `EMBEDDING_PROVIDER` (mặc định 'gemini')."""
     provider = _env("EMBEDDING_PROVIDER", default="gemini").lower()
     if provider == "ollama":
-        from modules.base.clients.ollama_client import OllamaClient
+        from modules.base.app.clients.ollama_client import OllamaClient
 
         return OllamaClient()
-    from modules.base.clients.gemini_client import GeminiClient
+    from modules.base.app.clients.gemini_client import GeminiClient
 
     return GeminiClient()

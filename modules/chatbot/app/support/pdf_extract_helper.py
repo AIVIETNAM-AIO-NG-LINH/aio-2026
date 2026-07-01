@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from google.genai import types
 from pypdf import PageObject, PdfReader, PdfWriter
 
-from modules.base.clients.gemini_client import GeminiClient
+from modules.base.app.clients.gemini_client import GeminiClient
 
 from ..rag.exceptions import UnsupportedDocumentError
 

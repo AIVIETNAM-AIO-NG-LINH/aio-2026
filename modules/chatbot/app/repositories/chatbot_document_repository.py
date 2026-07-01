@@ -7,7 +7,7 @@ soft-delete tự bị loại.
 
 from __future__ import annotations
 
-from modules.base.repositories import BaseRepository
+from modules.base.app.repositories import BaseRepository
 
 from ..contracts.repositories import ChatbotDocumentRepositoryInterface
 from ..models import ChatbotDocument

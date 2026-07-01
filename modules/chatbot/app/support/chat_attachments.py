@@ -30,7 +30,7 @@ from ..chat_pipeline.config import ChatConfig
 
 if TYPE_CHECKING:
     from ..models import ChatConversation, ChatMessage, ChatMessageFile
-    from modules.media.models import Media
+    from modules.media.app.models import Media
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class ChatAttachments:
     def __init__(self) -> None:
         self._config = ChatConfig.from_env()
         # Lazy import repo để tránh phụ thuộc vòng lúc nạp module.
-        from modules.media.repositories import MediaRepository
+        from modules.media.app.repositories import MediaRepository
 
         from ..repositories import ChatMessageFileRepository
 
@@ -180,8 +180,8 @@ class ChatAttachments:
         propagate cho caller bắt (fail-safe ở `_attach_one`/`_history_part`). Mime đẩy
         lên Gemini luôn là PDF (PDF giữ nguyên, Word đã convert) nên không trả mime.
         """
-        from modules.base.clients.gemini_client import GeminiClient
-        from modules.base.clients.s3_client import S3Client
+        from modules.base.app.clients.gemini_client import GeminiClient
+        from modules.base.app.clients.s3_client import S3Client
 
         kind = media.document_kind  # "PDF" / "WORD" / None
         if kind is None:

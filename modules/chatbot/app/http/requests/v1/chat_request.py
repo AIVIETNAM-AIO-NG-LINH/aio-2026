@@ -14,8 +14,8 @@ from typing import Optional
 
 from rest_framework import serializers
 
-from modules.base.requests import BaseFormRequest
-from modules.base.supports import translate_lazy
+from modules.base.app.requests import BaseFormRequest
+from modules.base.app.supports import translate_lazy
 
 from ....catalogs import ChatbotCatalog
 

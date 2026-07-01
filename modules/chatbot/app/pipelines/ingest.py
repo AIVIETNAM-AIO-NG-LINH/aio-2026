@@ -24,7 +24,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from google.genai import errors as genai_errors
 from opensearchpy.exceptions import OpenSearchException
 
-from modules.base.clients.s3_client import S3Client
+from modules.base.app.clients.s3_client import S3Client
 
 from ..rag.embedder import embed_chunks
 from ..rag.exceptions import UnsupportedDocumentError
@@ -58,7 +58,7 @@ def _push_progress(document: ChatbotDocument) -> None:
     `indexed_percent`, `media`…). KHÔNG raise — caller đã bọc try/except, và
     `RealtimeClient.publish` cũng tự nuốt lỗi → push hỏng không làm hỏng pipeline.
     """
-    from modules.base.clients.realtime_client import realtime_client
+    from modules.base.app.clients.realtime_client import realtime_client
 
     from ..enums import RealtimeEvent
     from ..transformers import DocumentTransformer

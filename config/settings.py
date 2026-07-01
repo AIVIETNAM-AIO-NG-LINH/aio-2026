@@ -32,10 +32,10 @@ INSTALLED_APPS = [
     # Third-party
     "rest_framework",
     # Local modules (mỗi tính năng là 1 app trong modules/)
-    "modules.base",
-    "modules.core",
-    "modules.example",
-    "modules.media",
+    "modules.base.apps.BaseConfig",
+    "modules.core.apps.CoreConfig",
+    "modules.example.apps.ExampleConfig",
+    "modules.media.apps.MediaConfig",
     "modules.chatbot.apps.ChatbotConfig",
 ]
 
@@ -46,7 +46,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "modules.base.middleware.VerifyInternalToken",
+    "modules.base.app.middleware.VerifyInternalToken",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -100,10 +100,14 @@ USE_TZ = True
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Chatbot giữ migrations trong package `database/` (kiểu Laravel) thay vì
-# `<app>/migrations/` mặc định của Django — khai báo lại vị trí cho app `chatbot`.
+# Chatbot & Media giữ migrations trong package `database/` (kiểu Laravel) thay vì
+# `<app>/migrations/` mặc định của Django — khai báo lại vị trí cho từng app.
 MIGRATION_MODULES = {
     "chatbot": "modules.chatbot.database.migrations",
+    "media": "modules.media.database.migrations",
+    "core": "modules.core.database.migrations",
+    "base": "modules.base.database.migrations",
+    "example": "modules.example.database.migrations",
 }
 
 # --- Django REST Framework -------------------------------------------------
@@ -123,7 +127,7 @@ REST_FRAMEWORK = {
     "DATETIME_INPUT_FORMATS": ["iso-8601", "%Y-%m-%d %H:%M:%S"],
     # Render ApiException / FailSuccessException của base module ra đúng shape FE
     # (đóng vai render() của exception bên Laravel); lỗi khác để DRF xử lý mặc định.
-    "EXCEPTION_HANDLER": "modules.base.exceptions.api_exception_handler",
+    "EXCEPTION_HANDLER": "modules.base.app.exceptions.api_exception_handler",
 }
 
 # --- Internal service-to-service (ai-aio ↔ api-aio qua nginx:8080) ----------

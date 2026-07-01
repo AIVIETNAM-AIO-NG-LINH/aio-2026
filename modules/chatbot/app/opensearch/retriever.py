@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from modules.base.clients.opensearch_client import BaseOpenSearchClient
+from modules.base.app.clients.opensearch_client import BaseOpenSearchClient
 
 logger = logging.getLogger(__name__)
 

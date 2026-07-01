@@ -2,7 +2,7 @@
 
 Tách riêng khỏi `rag/config.py` (lo ingest/retrieve). Tái dùng `_env*` helper của
 RAG để khỏi trùng logic parse env; Gemini/OpenSearch do client ở
-`modules.base.clients` tự quản config.
+`modules.base.app.clients` tự quản config.
 """
 
 from __future__ import annotations

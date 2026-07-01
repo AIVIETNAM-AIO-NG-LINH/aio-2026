@@ -11,8 +11,8 @@ from dataclasses import dataclass
 
 from rest_framework import serializers
 
-from modules.base.requests import BaseFormRequest
-from modules.base.supports import translate, translate_lazy
+from modules.base.app.requests import BaseFormRequest
+from modules.base.app.supports import translate, translate_lazy
 
 from ....catalogs import ChatbotCatalog
 from ....repositories import ChatbotDocumentRepository

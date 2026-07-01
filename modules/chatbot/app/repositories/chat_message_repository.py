@@ -6,7 +6,7 @@ Laravel của dự án gốc).
 
 from __future__ import annotations
 
-from modules.base.repositories import BaseRepository
+from modules.base.app.repositories import BaseRepository
 
 from ..contracts.repositories import ChatMessageRepositoryInterface
 from ..enums import MessageRole, MessageStatus

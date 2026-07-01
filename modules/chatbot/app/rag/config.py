@@ -3,7 +3,7 @@
 Gom config rời rạc (chunking, rerank…) vào các dataclass nhỏ để phần còn
 lại của pipeline nhận object đã parse sẵn thay vì gọi `os.getenv` rải rác.
 Không đụng `config/settings.py` — RAG là tính năng nền của worker, giữ độc lập.
-(S3/Gemini/OpenSearch/LightRAG không nằm đây — client ở `modules.base.clients`
+(S3/Gemini/OpenSearch/LightRAG không nằm đây — client ở `modules.base.app.clients`
 tự quản: `S3Client`, `GeminiClient`, `BaseOpenSearchClient`, `BaseLightRagClient`.)
 """
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from django.db.models import Exists, OuterRef, Q
 
-from modules.base.repositories import BaseRepository
+from modules.base.app.repositories import BaseRepository
 
 from ..contracts.repositories import ChatConversationRepositoryInterface
 from ..enums import ConversationStatus

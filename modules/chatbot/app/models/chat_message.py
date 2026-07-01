@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from django.db import models
 
-from modules.base.models import SoftDeleteModel
+from modules.base.app.models import SoftDeleteModel
 
 from modules.chatbot.app.enums import MessageRole, MessageStatus
 

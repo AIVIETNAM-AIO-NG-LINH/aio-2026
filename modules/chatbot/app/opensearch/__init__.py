@@ -5,7 +5,7 @@
 - `retriever.py`       — `Retriever`: hybrid search (BM25 + kNN) + RRF.
 - `ltm.py`             — `ChatHistoryIndex`: LTM hội thoại (index + kNN theo user).
 
-Tất cả kế thừa `BaseOpenSearchClient` (modules.base.clients) — connection/env do
+Tất cả kế thừa `BaseOpenSearchClient` (modules.base.app.clients) — connection/env do
 base lo.
 """
 

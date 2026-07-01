@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from modules.base.transformers import TransformerAbstract
+from modules.base.app.transformers import TransformerAbstract
 
 from ..models import ChatConversation
 

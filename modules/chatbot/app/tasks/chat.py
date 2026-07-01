@@ -56,7 +56,7 @@ def generate_conversation_title(conversation_id: int, question: str, answer: str
     # Push riêng cho chủ hội thoại → FE cập nhật tiêu đề ở sidebar tức thì, khỏi poll.
     # Fail-safe: RealtimeClient tự nuốt lỗi, không raise lên task.
     if won:
-        from modules.base.clients.realtime_client import realtime_client
+        from modules.base.app.clients.realtime_client import realtime_client
         from ..enums.realtime_event import RealtimeEvent
 
         realtime_client().to_user(

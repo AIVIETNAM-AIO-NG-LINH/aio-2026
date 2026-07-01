@@ -21,7 +21,7 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING
 
-from modules.base.clients.lightrag_client import BaseLightRagClient
+from modules.base.app.clients.lightrag_client import BaseLightRagClient
 
 if TYPE_CHECKING:
     from lightrag import LightRAG

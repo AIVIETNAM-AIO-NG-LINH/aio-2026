@@ -30,9 +30,9 @@ from google.genai import types
 from rest_framework import status as http_status
 from rest_framework.response import Response
 
-from modules.base.services import BaseService
-from modules.base.supports import translate
-from modules.base.transformers import TransformerService
+from modules.base.app.services import BaseService
+from modules.base.app.supports import translate
+from modules.base.app.transformers import TransformerService
 
 from ...catalogs import ChatbotCatalog
 from ...models import ChatConversation, ChatMessage

@@ -3,12 +3,12 @@
 
 Namespace khai báo 1 lần (hằng `_NS`), mỗi key (`name`) khai báo 1 lần ở đây;
 call-site gọi qua hằng: `translate("Hội thoại không tồn tại", ChatbotCatalog.CONVERSATION_NOT_FOUND)`.
-Chuỗi dùng chung nhiều module để ở `modules.base.catalogs.CommonCatalog`.
+Chuỗi dùng chung nhiều module để ở `modules.base.app.catalogs.CommonCatalog`.
 """
 
 from __future__ import annotations
 
-from modules.base.catalogs import LangCatalog
+from modules.base.app.catalogs import LangCatalog
 
 
 class ChatbotCatalog(LangCatalog):

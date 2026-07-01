@@ -15,8 +15,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 
-from modules.base.singletons import CurrentUser
-from modules.base.supports import parse_pagination
+from modules.base.app.singletons import CurrentUser
+from modules.base.app.supports import parse_pagination
 
 from ...requests.v1 import ChatRequest, UpdateConversationRequest
 from ....services import ChatService

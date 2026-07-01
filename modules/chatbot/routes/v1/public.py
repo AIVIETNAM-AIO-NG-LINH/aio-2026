@@ -19,7 +19,7 @@ token user (qua api-aio) rồi forward `X-Auth-User-Id`; KHÔNG đi qua
 
 from django.urls import path
 
-from modules.base.middleware import ensure_authenticated
+from modules.base.app.middleware import ensure_authenticated
 
 from ...app.http.controllers.v1 import ChatController
 
