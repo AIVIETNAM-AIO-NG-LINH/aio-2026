@@ -1,222 +1,286 @@
-# AI AIO — Django REST API (Chatbot RAG)
+# ai-aio
 
-Backend AI cho hệ AIO: **Django 5.2 (LTS)** + **Django REST Framework** (API JSON thuần — không admin / không giao diện HTML), chạy trong **Docker**. Cung cấp một **chatbot RAG**: ingest tài liệu (PDF/Word) thành kho tri thức và trả lời hỏi-đáp dạng **SSE streaming** qua **Google ADK** (Agent + tool RAG).
+**Repo backend AI của hệ AIO** — nơi chứa **các module thuộc khóa học AIO**, tập trung **chỉ vào phần AI**. Dịch vụ Django + Django REST Framework (JSON thuần, **không** trang admin/HTML); mỗi tính năng AI là **một module** (Django app) trong [modules/](modules/).
 
-ai-aio chạy *cạnh* api-aio trong stack `nginx-aio`: dùng chung **MariaDB** (DB `api_ai`), **Redis** (broker Celery) và mạng docker `aio-net`. Truy cập từ ngoài qua reverse-proxy nginx (`http://ai.localhost:8000`), không publish cổng ra host.
+> ### 🎯 Phạm vi repo (chỉ AI)
+>
+> - ✅ **Chỉ chứa luồng liên quan đến AI**: chatbot RAG (trích dẫn, sơ đồ tư duy, reasoning, đính kèm file, trí nhớ dài hạn), pipeline ingest tài liệu (embedding → vector store → knowledge graph), truy hồi hybrid + rerank, LLM/embedding (Gemini/Ollama).
+> - ❌ **Không chứa phần ngoài AI**: đăng nhập/xác thực người dùng thật, nghiệp vụ CRUD chung, quản lý user–quyền–thanh toán, upload/CRUD file gốc… — những phần này do các service khác trong hệ AIO đảm nhiệm (**chủ yếu là `api-aio`**). `ai-aio` chỉ **tiêu thụ** dữ liệu đó: đọc bảng dùng chung (`media`, `chatbot_documents`), nhận header `X-Auth-User-Id` đã verify sẵn từ nginx, hỏi hạn mức token qua api-aio.
+> - 🎓 Đây là **repo khung cho các module trong khóa học AIO**: [base/](modules/base/README.md) là lớp nền dùng chung, [example/](modules/example/README.md) là khuôn để học viên tạo module mới, [chatbot/](modules/chatbot/README.md) là một module AI hoàn chỉnh làm mẫu tham chiếu.
+
+`ai-aio` chạy **cạnh `api-aio`** trong stack `nginx-aio`: dùng chung MariaDB (DB `api_ai`), Redis (broker Celery) và mạng docker `aio-net`. Dịch vụ **không publish cổng ra host** — mọi truy cập đi qua reverse-proxy `nginx-aio` tại `http://ai.localhost:8000`.
+
+Tài liệu này giới thiệu **cấu trúc tổng thể** và **cách chạy code**; nó chỉ mô tả **luồng AI** của hệ. Chi tiết sâu của từng tính năng nằm ở README riêng trong mỗi module (xem bảng [Các module](#các-module)).
+
+---
 
 ## Stack
 
 | Thành phần | Lựa chọn |
-|------------|----------|
-| Web framework | Django 5.2 LTS |
-| API | Django REST Framework (JSON-only) |
-| Database | MariaDB (DB `api_ai`, dùng chung với api-aio) |
-| Driver | mysqlclient |
-| WSGI server (prod) | Gunicorn |
-| Worker nền | Celery + Redis |
-| Vector store | OpenSearch 2.19 (kNN/HNSW, parent-child) |
-| LLM / Embedding | Google GenAI (Gemini) — extract, embed, rewrite, summary, chat |
-| Luồng chat | Google ADK (Agent + tool RAG + Runner streaming SSE) |
-| Object storage | S3 / MinIO (boto3) — tải file gốc để ingest |
-| Knowledge graph (tùy chọn) | LightRAG + PostgreSQL/pgvector + Neo4j |
-| Config | django-environ (biến môi trường) |
-| Runtime | Python 3.13 (trong Docker) |
+|---|---|
+| Ngôn ngữ / Runtime | Python 3.13 |
+| Web framework | Django 5.2 LTS + Django REST Framework (JSON only) |
+| WSGI server (prod) | Gunicorn (`gthread`, giữ SSE) |
+| Cơ sở dữ liệu | MariaDB (DB `api_ai`, dùng chung với `api-aio`) |
+| Worker nền | Celery 5.4 (broker/result = Redis) |
+| Vector store | OpenSearch 2.19 (index parent-child, hybrid + rerank) |
+| Chat agent | Google ADK (Agent + tool RAG + Runner streaming SSE) |
+| LLM / Embedding | `gemini` (mặc định) hoặc `ollama` (local, qua LiteLLM) |
+| Knowledge Graph | LightRAG (PostgreSQL/pgvector + Neo4j) — **bật mặc định** |
+| Object storage | S3 (boto3) — tải file gốc cho pipeline RAG |
+| Realtime | Redis → `node-aio` (WebSocket) |
+| Đóng gói | Docker (multi-stage), Docker Compose |
+| CI/CD | Jenkins (build & deploy local, image `aio/ai-aio:latest`) — xem [Jenkinsfile](Jenkinsfile) |
+
+Danh sách phụ thuộc đầy đủ: [requirements.txt](requirements.txt).
+
+---
 
 ## Kiến trúc & cấu trúc thư mục
 
-Mỗi tính năng là một **module** (Django app) trong `modules/`. Module `base/` cung cấp lớp nền dùng chung theo phong cách Laravel (model soft-delete, repository, service, transformer, catalog dịch, middleware, client tới dịch vụ ngoài).
+### Layout kiểu Laravel (điểm khác biệt chính)
+
+Mỗi tính năng là **một Django app** đặt trong `modules/<name>/`, tổ chức theo phong cách Laravel thay vì layout Django mặc định:
+
+```
+modules/<name>/
+├── app/                  # toàn bộ code: http/(controllers, requests), services/,
+│                         # repositories/, models/, enums/, transformers/, catalogs/, ...
+├── routes/               # khai báo URL (public.py, v1/public.py, v1/internal.py) thay cho urls.py
+├── database/migrations/  # migrations (vị trí khai lại qua MIGRATION_MODULES)
+└── apps.py               # AppConfig
+```
+
+Ràng buộc trong [config/settings.py](config/settings.py):
+
+- `INSTALLED_APPS` nạp 5 module qua `*.apps.*Config`: **base, core, example, media, chatbot**.
+- `MIGRATION_MODULES` chuyển migrations của **mọi** app sang `modules.<app>.database.migrations`.
+- `MIDDLEWARE` chỉ thêm **duy nhất** `modules.base.app.middleware.VerifyInternalToken` (ngoài default Django). Việc xác thực người dùng áp **per-route** kiểu route-middleware Laravel (`ensure_authenticated` / `authenticate_optional`), **không** global.
+
+### Cây thư mục ở mức tổng
 
 ```
 ai-aio/
-├── config/                      # Django project
-│   ├── settings.py              # cấu hình 12-factor (env)
-│   ├── urls.py                  # nối route các module
-│   ├── celery.py                # app Celery (autodiscover tasks)
-│   └── wsgi.py / asgi.py
-├── modules/
-│   ├── base/                    # lớp nền dùng chung (KHÔNG có endpoint)
-│   │   ├── models/              # SoftDeleteModel / NotSoftDeleteModel + helpers
-│   │   ├── repositories/        # BaseRepository (truy vấn dữ liệu)
-│   │   ├── services/            # BaseService (nghiệp vụ, response/exception chuẩn)
-│   │   ├── transformers/        # Fractal-style transformer (shape JSON cho FE)
-│   │   ├── catalogs/            # khóa i18n cho translate()
-│   │   ├── middleware/          # EnsureAuthenticated / VerifyInternalToken …
-│   │   ├── clients/             # S3, Gemini, OpenSearch, LightRAG, internal HTTP
-│   │   ├── requests/            # BaseFormRequest (validate input)
-│   │   ├── singletons/          # CurrentUser (user của request hiện tại)
-│   │   ├── supports/            # translate_helper
-│   │   └── exceptions/          # ApiException + exception handler (shape lỗi FE)
-│   ├── core/                    # health check — GET /api/health/
-│   ├── example/                 # MODULE MẪU (CRUD) — copy để tạo module mới
-│   ├── media/                   # model Media (read-only, bảng api-aio, managed=False)
-│   └── chatbot/                 # CHATBOT RAG (tính năng chính)
-│       ├── models/              # ChatConversation, ChatMessage, ChatbotDocument
-│       ├── enums/               # *_status, message_role
-│       ├── repositories/        # truy vấn conversation / message / document
-│       ├── requests/            # ChatRequest, IngestDocumentRequest
-│       ├── services/
-│       │   ├── chat_service.py  # điều phối 1 lượt chat (prepare → stream SSE)
-│       │   ├── ingest_service.py# enqueue ingest tài liệu
-│       │   ├── chat/            # ADK (agent/runner/session/tools), prompt, sse, history
-│       │   ├── rag/             # embedder, query_rewriter, reranker_client, config
-│       │   └── opensearch/      # indexer, retriever, summary_indexer, ltm
-│       ├── pipelines/           # thân ingest chạy trong worker (extract→chunk→embed→index)
-│       ├── tasks/               # vỏ Celery: ingest, chat (title + LTM)
-│       ├── transformers/        # conversation/message transformer
-│       ├── views/               # ChatViewSet (SSE) + IngestDocumentView
-│       └── urls/                # public.py (chat) + internal.py (ingest)
+├── config/               # dự án Django: settings.py, urls.py (định tuyến gốc), wsgi/asgi, celery
+├── modules/              # các Django app (mỗi tính năng 1 module — xem bên dưới)
+│   ├── base/             # nền tảng dùng chung (middleware, exceptions, DTO, auth helpers)
+│   ├── core/             # tiện ích lõi + health check
+│   ├── example/          # module mẫu (CRUD) — khuôn để tạo module mới
+│   ├── media/            # metadata/tham chiếu media (file đính kèm)
+│   └── chatbot/          # chatbot RAG, ingest tài liệu, mind map, knowledge graph
+├── docker/               # Dockerfile + docker-compose*.yml + secrets.env(.example)
+├── entrypoint.sh         # chờ DB → migrate → chạy CMD
 ├── manage.py
 ├── requirements.txt
-├── entrypoint.sh                # chờ DB → migrate → chạy server
-├── docker/
-│   ├── Dockerfile               # multi-stage build (Python 3.13)
-│   ├── docker-compose.yml       # DEV: runserver + worker + opensearch (+ profile lightrag)
-│   └── docker-compose.prod.yml  # PROD: Gunicorn + worker + opensearch
-├── .env                         # biến môi trường (git-ignored)
-└── .env.example                 # mẫu để copy thành .env
+└── Jenkinsfile
 ```
 
-> **DB dùng chung:** ai-aio nối thẳng vào DB `api_ai` của api-aio. Bảng `media` và
-> `chatbot_documents` thuộc api-aio nên model để `managed=False` (Django chỉ ĐỌC,
-> chỉ ghi cột `status`, KHÔNG migrate cấu trúc). Các bảng riêng của ai-aio
-> (`chat_conversations`, `chat_messages`, `django_*`, `auth_*`, `example`…) do
-> `entrypoint.sh migrate` tạo trong cùng DB này.
+Định tuyến gốc — [config/urls.py](config/urls.py):
+
+| Prefix | Include | Kết quả |
+|---|---|---|
+| `api/` | `modules.core.routes.public` | `GET /api/health/` |
+| `api/` | `modules.example.routes.public` | `/api/examples/` CRUD (DefaultRouter) |
+| `api/v1/chatbot/` | `modules.chatbot.routes.v1.public` | chat / conversations |
+| `api/internal/v1/chatbot/` | `modules.chatbot.routes.v1.internal` | documents ingest / purge (nội bộ) |
+
+---
+
+## Các module
+
+**chatbot** là module **tính năng AI** (trọng tâm của repo); **base / core / example / media** là **khung & hạ tầng dùng chung** để dựng module AI — không phải nghiệp vụ ngoài AI. Mọi module theo cùng layout Laravel.
+
+| Module | Vai trò | Tài liệu chi tiết |
+|---|---|---|
+| **base** | Nền tảng dùng chung: `VerifyInternalToken`, `ensure_authenticated`/`authenticate_optional`, `CurrentUser`, exception handler, DTO/base repository. | [modules/base/README.md](modules/base/README.md) |
+| **core** | Tiện ích lõi + endpoint health check. | [modules/core/README.md](modules/core/README.md) |
+| **example** | Module mẫu CRUD — khuôn mẫu để thêm module mới. | [modules/example/README.md](modules/example/README.md) |
+| **media** | Metadata & tham chiếu media (file đính kèm trong chat). | [modules/media/README.md](modules/media/README.md) |
+| **chatbot** | Chatbot RAG có trích dẫn (SSE), ingest tài liệu (Celery), mind map, reasoning, knowledge graph, token quota, realtime. | [modules/chatbot/README.md](modules/chatbot/README.md) |
+
+Module chatbot còn có công cụ đánh giá RAG riêng: [modules/chatbot/eval/README.md](modules/chatbot/eval/README.md).
+
+---
 
 ## Yêu cầu trước khi chạy
 
-ai-aio không tự dựng MariaDB / Redis — nó dùng chung từ stack `nginx-aio`. Vì vậy:
+- **Docker** + **Docker Compose**.
+- Mạng docker `aio-net` đã tồn tại:
+  ```bash
+  docker network create aio-net
+  ```
+- **Development**: đã up `nginx-aio` **trước** (cung cấp MariaDB `db`, Redis `redis`, gateway `nginx-aio:8080`).
+- **Production**: đã up `data-aio` **trước** (cung cấp `aio-net` + toàn bộ data store: db, redis, opensearch, postgres, neo4j).
 
-```bash
-# 1. Tạo mạng dùng chung (1 lần)
-docker network create aio-net
+> Mọi lệnh `docker compose` bên dưới chạy **từ thư mục gốc repo**.
 
-# 2. Up stack nginx-aio trước (cung cấp db + redis + reverse proxy)
-#    (xem repo nginx-aio)
-```
+---
 
 ## Chạy nhanh (Development)
 
-Yêu cầu: **Docker** + **Docker Compose** (không cần cài Python ở máy) và đã làm bước "Yêu cầu trước khi chạy".
+Stack dev — [docker/docker-compose.yml](docker/docker-compose.yml) — gồm `web` (Django dev server, mount source live-reload), `worker` (Celery `--concurrency=2`) và `opensearch` (single-node, tắt security).
 
 ```bash
-# 1. Tạo .env từ mẫu rồi điền các secret (DB, INTERNAL_TOKEN, GEMINI_API_KEY, S3…)
+# 1. Config không bảo mật
 cp .env.example .env
 
-# 2. Build & chạy (web + worker + opensearch)
+# 2. Secret (gitignored) — điền giá trị thật (DJANGO_SECRET_KEY, DB_PASSWORD,
+#    INTERNAL_TOKEN, GEMINI_API_KEY, AWS_S3_*, LightRAG passwords, ...)
+cp docker/secrets.env.example docker/secrets.env
+
+# 3. Chạy (nginx-aio phải up trước, aio-net phải tồn tại)
 docker compose -f docker/docker-compose.yml up --build
 ```
 
-Mẹo: `export COMPOSE_FILE=docker/docker-compose.yml` để khỏi gõ `-f` mỗi lần.
+`entrypoint.sh` (service `web`) tự **chờ DB** rồi chạy `migrate --noinput` trước khi khởi động server; `worker` bỏ qua entrypoint và chạy thẳng Celery.
 
-Health check (qua proxy): <http://ai.localhost:8000/api/health/> → trả về:
+Kiểm tra dịch vụ sống (qua reverse-proxy):
 
-```json
-{"status": "ok", "database": "up"}
+```bash
+curl http://ai.localhost:8000/api/health/
 ```
 
-Server dev tự reload khi sửa code (thư mục được mount vào container). Index OpenSearch giữ qua volume `opensearch-data`.
+Secret bắt buộc: `DJANGO_SECRET_KEY`, `DB_PASSWORD`, `INTERNAL_TOKEN` (phải **giống** `api-aio`), `GEMINI_API_KEY` (RAG/chat). Tham chiếu đầy đủ: [docker/secrets.env.example](docker/secrets.env.example).
+
+---
+
+## Bật Knowledge Graph (LightRAG)
+
+Knowledge Graph **bật trong cấu hình mẫu** — [.env.example](.env.example) đặt `LIGHTRAG_ENABLED=true`. Nếu bỏ biến này, code tự **fallback về tắt** (`BaseLightRagClient` đọc `LIGHTRAG_ENABLED` với `default=False`).
+
+> Lưu ý: dòng comment "TẮT mặc định" trong `.env.example` mô tả mặc định của **code**, không khớp với giá trị mẫu `=true` ngay bên dưới.
+
+Datastore của LightRAG (PostgreSQL/pgvector + Neo4j) **không** chạy cùng `docker compose up` thường:
+
+- **Development** — thuộc profile `lightrag`, phải bật kèm:
+  ```bash
+  docker compose -f docker/docker-compose.yml --profile lightrag up -d
+  ```
+- **Production** — postgres/neo4j lấy từ `data-aio` (không khai trong compose của ai-aio); chỉ cần data-aio đã up.
+
+Secret liên quan: `LIGHTRAG_PG_PASSWORD`, `LIGHTRAG_NEO4J_PASSWORD` (trong `docker/secrets.env`, phải khớp `data-aio`).
+
+Để **tắt** KG: đặt `LIGHTRAG_ENABLED=false` trong `.env`. Pipeline KG là **fail-safe** — không chặn tài liệu chuyển sang `READY`.
+
+---
+
+## Chạy LLM local (Ollama) — tùy chọn
+
+Mặc định LLM/embedding dùng Gemini. Để chạy local, dùng stack Ollama riêng — [docker/docker-compose.ollama.yml](docker/docker-compose.ollama.yml):
+
+```bash
+# 1. Up stack Ollama (cùng aio-net → web/worker gọi qua ollama:11434)
+docker compose -f docker/docker-compose.ollama.yml up -d
+
+# 2. Pull model (lần đầu, cache vào volume)
+docker compose -f docker/docker-compose.ollama.yml exec ollama ollama pull qwen2.5
+docker compose -f docker/docker-compose.ollama.yml exec ollama ollama pull nomic-embed-text
+```
+
+Rồi đặt trong `.env` và restart `web`/`worker`:
+
+```dotenv
+LLM_PROVIDER=ollama
+EMBEDDING_PROVIDER=ollama
+OLLAMA_API_BASE=http://ollama:11434
+OLLAMA_CHAT_MODEL=qwen2.5
+OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+```
+
+> Đổi `EMBEDDING_PROVIDER` **bắt buộc re-index OpenSearch** (không gian vector khác nhau — không trộn 2 provider trong cùng index). Ollama (LLM local) được **miễn** tính hạn mức token.
+
+---
 
 ## Chạy production (Gunicorn)
 
-```bash
-# 1. Up data-aio TRƯỚC (tạo aio-net + db/redis/opensearch/postgres/neo4j)
-#    xem ../data-aio/README.md
-# 2. Secret cho docker: cp docker/secrets.env.example docker/secrets.env rồi điền
-# 3. Build & up (chỉ web + worker — data store lấy từ data-aio)
-docker compose -f docker/docker-compose.prod.yml up --build -d
-```
-
-Khác với dev: dùng Gunicorn (theo CMD trong Dockerfile), `DJANGO_DEBUG=False`, không mount code.
-
-**Data store** (db, redis, opensearch, postgres, neo4j) đã **chuyển sang [data-aio](../data-aio)** — prod compose KHÔNG còn khai chúng, chỉ còn `web` + `worker`, nối vào `aio-net` (external) qua alias `db`/`redis`/`opensearch`/`postgres`/`neo4j`.
-
-**Secret tách riêng** (không nằm trong `.env`/`.env.example` nữa): `DJANGO_SECRET_KEY`, mật khẩu DB, `INTERNAL_TOKEN`, AWS/Gemini key, password OpenSearch/LightRAG, `RERANK_API_KEY` → để ở [docker/secrets.env](docker/secrets.env) (gitignored), docker nạp qua `env_file`. Template: [docker/secrets.env.example](docker/secrets.env.example). Đổi hết giá trị mặc định trước khi deploy thật.
-
-### Knowledge graph (LightRAG) — tùy chọn
-
-PostgreSQL + Neo4j cho LightRAG nằm trong **profile `lightrag`** (mặc định KHÔNG lên). Chỉ bật khi `LIGHTRAG_ENABLED=true`:
+Stack prod — [docker/docker-compose.prod.yml](docker/docker-compose.prod.yml) — gồm `web` (Gunicorn, `DJANGO_DEBUG=False`, image `aio/ai-aio:latest`, **không** mount source) và `worker`. Toàn bộ data store lấy **từ `data-aio`** (external), không khai ở đây.
 
 ```bash
-docker compose -f docker/docker-compose.yml --profile lightrag up -d
+# data-aio đã up trước (aio-net + db/redis/opensearch/postgres/neo4j)
+docker compose -f docker/docker-compose.prod.yml up -d --build
 ```
+
+Secret tách riêng ở `docker/secrets.env` (gitignored). Trong CI/CD Jenkins: config lấy từ `.env.example`, secret lấy từ credential kiểu "Secret file" (`env-ai-aio`). Xem [Jenkinsfile](Jenkinsfile).
+
+---
 
 ## Endpoints
 
-| Method | URL | Mô tả |
-|--------|-----|-------|
-| GET | `/api/health/` | Health check (app + kết nối DB) |
-| POST | `/api/v1/chatbot/chat` | Hỏi-đáp RAG — trả lời **SSE** (`meta → delta* → done\|error`). Body: `{question, conversation_id?, top_k?}` |
-| GET | `/api/v1/chatbot/conversations` | Danh sách hội thoại của user (phân trang) |
-| GET | `/api/v1/chatbot/conversations/{id}/messages` | Tin nhắn của 1 hội thoại (phân trang) |
-| POST | `/api/internal/v1/chatbot/documents/ingest` | **Nội bộ** — nhận `{document_id}`, enqueue ingest → `202` |
-| GET · POST | `/api/examples/` | Module mẫu — list / create |
-| GET · PUT · PATCH · DELETE | `/api/examples/{id}/` | Module mẫu — chi tiết / sửa / xoá |
+| Method | Path | Ghi chú |
+|---|---|---|
+| GET | `/api/health/` | Health check |
+| GET · POST | `/api/examples/` | Danh sách / tạo (module mẫu) |
+| GET · PUT · PATCH · DELETE | `/api/examples/{id}/` | Chi tiết / cập nhật / xoá |
+| POST | `/api/v1/chatbot/chat` | Chat SSE (`ensure_authenticated`) |
+| GET | `/api/v1/chatbot/conversations` | Danh sách hội thoại (phân trang, `?q`, `?max_id`) |
+| PATCH | `/api/v1/chatbot/conversations/{id}` | Đổi tên hội thoại |
+| DELETE | `/api/v1/chatbot/conversations/{id}` | Xoá mềm hội thoại |
+| GET | `/api/v1/chatbot/conversations/{id}/messages` | Danh sách tin nhắn |
+| POST | `/api/internal/v1/chatbot/documents/ingest` | Ingest tài liệu (nội bộ) |
+| POST | `/api/internal/v1/chatbot/documents/purge` | Xoá tài liệu khỏi index (nội bộ) |
 
-**Xác thực:**
+**Luồng SSE của chat**: `meta` (kèm `citations`) → `delta`* → (`mindmap_pending` → `mindmap`)? → `done` | `error`. (Tool gọi từ lần 2 trở đi phát thêm event `citations`.)
 
-- Nhóm `/api/v1/chatbot/*` (công khai): nginx verify token user (qua api-aio) rồi forward header `X-Auth-User-Id`. Gate `ensure_authenticated` chặn 401 nếu thiếu, có thì populate `CurrentUser`.
-- Nhóm `/api/internal/v1/*` (service-to-service): middleware `VerifyInternalToken` chốt header `X-Internal-Token` ở prefix (sai → 403). Không gắn user.
+### Xác thực
 
-## Luồng chính
+- **Nhóm công khai `/api/v1/chatbot/*`**: `nginx-aio` verify token user (qua `api-aio`) rồi forward header `X-Auth-User-Id`. Route dùng `ensure_authenticated` → thiếu header trả **401**, có thì populate `CurrentUser`.
+- **Nhóm nội bộ `/api/internal/v1/*`** (service-to-service): middleware `VerifyInternalToken` chốt header `X-Internal-Token` ngay ở prefix (sai → **403**), không gắn user.
 
-**Ingest tài liệu** (`/api/internal/v1/chatbot/documents/ingest` → Celery `chatbot.ingest_document`):
-file gốc tải từ S3 → trích text theo trang (pypdf + Gemini OCR cho trang scan/ảnh) → chunk theo trang (kèm contextual header) → embed (Gemini) → index parent-child vào OpenSearch. Phụ (fail-safe, không chặn READY): index summary + LightRAG/KG. Status `chatbot_documents.status`: `PENDING → READY | FAILED`.
-
-**Chat** (`/api/v1/chatbot/chat`, SSE qua Google ADK):
-`prepare` (đồng bộ) tạo/lấy conversation, chặn lượt đang xử lý (409), lưu message user + placeholder bot → `stream` nạp LTM (hội thoại cũ liên quan) + lịch sử N lượt vào session ADK → Runner chạy agent, agent tự gọi tool `search_knowledge_base` (hybrid BM25 + kNN, RRF, rewrite + rerank) → stream câu trả lời. Sau lượt: Celery sinh tiêu đề hội thoại + lưu LTM (nền, fail-safe).
+---
 
 ## Lệnh thường dùng
 
 ```bash
-# Giả định đã export COMPOSE_FILE=docker/docker-compose.yml
-# (nếu không, thêm -f docker/docker-compose.yml sau `docker compose`).
+# Xem log (dev)
+docker compose -f docker/docker-compose.yml logs -f web worker
 
-# Xem log web / worker
-docker compose logs -f web
-docker compose logs -f worker
-
-# Tạo & chạy migrations sau khi thêm model (CHỈ bảng riêng của ai-aio)
-docker compose exec web python manage.py makemigrations
-docker compose exec web python manage.py migrate
+# Chạy migrations thủ công (web đã tự migrate lúc khởi động)
+docker compose -f docker/docker-compose.yml exec web python manage.py migrate
 
 # Django shell
-docker compose exec web python manage.py shell
+docker compose -f docker/docker-compose.yml exec web python manage.py shell
 
-# Dừng (giữ data) / dừng và xoá volume (mất index OpenSearch → phải re-ingest)
-docker compose down
-docker compose down -v
+# Đánh giá RAG (xem modules/chatbot/eval/README.md)
+docker compose -f docker/docker-compose.yml exec web python manage.py eval_rag
+
+# Dừng (giữ dữ liệu)
+docker compose -f docker/docker-compose.yml down
+
+# Dừng và XOÁ volume (opensearch/postgres/neo4j — mất index, phải re-ingest)
+docker compose -f docker/docker-compose.yml down -v
 ```
+
+---
 
 ## Thêm một module mới
 
-Cách nhanh nhất: **copy module mẫu** [modules/example/](modules/example/) rồi đổi tên.
+Kiến trúc kiểu Laravel giúp thêm tính năng theo khuôn cố định:
 
-1. Copy: `cp -r modules/example modules/<ten_module>`
-2. Sửa `apps.py`: `name = "modules.<ten_module>"` (đổi luôn tên class config)
-3. Đổi tên model / serializer / viewset / service trong các file tương ứng
-4. Sửa `urls.py`: đổi prefix `router.register(r"<ten>", ...)`
-5. Xoá file migration cũ trong `modules/<ten_module>/migrations/` (giữ lại `__init__.py`)
-6. Đăng ký vào `INSTALLED_APPS` ([config/settings.py](config/settings.py)): thêm `"modules.<ten_module>"`
-7. Nối route trong [config/urls.py](config/urls.py): `path("api/", include("modules.<ten_module>.urls"))`
-8. Tạo migration: `docker compose exec web python manage.py makemigrations && ... migrate`
+1. Copy `modules/example/` sang `modules/<name>/` và đổi tên `AppConfig` trong `apps.py`.
+2. Đăng ký app vào `INSTALLED_APPS` và trỏ migrations vào `MIGRATION_MODULES` — [config/settings.py](config/settings.py).
+3. Khai URL trong `modules/<name>/routes/…` rồi thêm **một dòng** `include()` vào [config/urls.py](config/urls.py).
 
-Tham khảo: [modules/core/](modules/core/) là module tối giản (chỉ health endpoint), [modules/example/](modules/example/) là module CRUD đầy đủ dùng làm template, [modules/chatbot/](modules/chatbot/) là module phức tạp dùng đủ lớp base (repository/service/transformer/pipeline/task).
+Chi tiết đầy đủ về khuôn (controllers, requests, services, repositories, transformers, per-route auth): [modules/example/README.md](modules/example/README.md).
+
+---
 
 ## Biến môi trường
 
-Xem [.env.example](.env.example) (đã chú thích chi tiết từng nhóm). Quan trọng nhất:
+Config không bảo mật ở [.env.example](.env.example); **toàn bộ secret** ở `docker/secrets.env` (gitignored, template [docker/secrets.env.example](docker/secrets.env.example)). Docker nạp cả hai qua `env_file`. Các nhóm chính:
 
-| Nhóm | Biến tiêu biểu |
-|------|----------------|
-| Django | `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS` |
-| Database (DB `api_ai` dùng chung) | `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` |
-| Internal (ai-aio ↔ api-aio) | `INTERNAL_TOKEN` (PHẢI khớp api-aio), `INTERNAL_GATEWAY_URL` |
-| Celery / Redis | `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND` |
-| S3 / object storage | `AWS_S3_ENDPOINT/REGION/BUCKET/ACCESS_KEY/SECRET_KEY`, `MEDIA_FOLDER` |
-| Google GenAI (Gemini) | `GEMINI_API_KEY`, `EMBEDDING_MODEL`, `GEMINI_EXTRACT_MODEL`, `GEMINI_CHAT_MODEL` |
-| OpenSearch | `OPENSEARCH_URL`, `OPENSEARCH_INDEX`, `OPENSEARCH_VECTOR_DIMS` |
-| Retrieve (hybrid + rerank) | `RETRIEVE_TOP_K/TOP_N/RRF_K`, `QUERY_REWRITE_*`, `RERANK_*` |
-| Chat | `CHAT_CONTEXT_TOP_K`, `CHAT_HISTORY_SIZE`, `CHAT_TITLE_ENABLED`, `CHAT_LTM_*` |
-| LightRAG (tùy chọn) | `LIGHTRAG_ENABLED`, `LIGHTRAG_PG_*`, `LIGHTRAG_NEO4J_*` |
-</content>
-</invoke>
+| Nhóm | Ví dụ biến | Nơi khai |
+|---|---|---|
+| Django | `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_SECRET_KEY` 🔐 | `.env` / secrets |
+| Database (MariaDB dùng chung) | `DB_NAME=api_ai`, `DB_USER`, `DB_PASSWORD` 🔐, `DB_HOST`, `DB_PORT` | `.env` / secrets |
+| Internal service-to-service | `INTERNAL_GATEWAY_URL`, `INTERNAL_TOKEN` 🔐 | `.env` / secrets |
+| Celery / Redis | `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND` | `.env` |
+| Realtime | `REALTIME_REDIS_URL`, `REALTIME_CHANNEL_PREFIX` | `.env` |
+| S3 / object storage | `AWS_S3_*`, `MEDIA_FOLDER` (🔐 key/secret) | secrets |
+| Gemini / GenAI | `GEMINI_API_KEY` 🔐, `EMBEDDING_MODEL`, `GEMINI_*_MODEL` | `.env` / secrets |
+| Provider LLM/Embedding | `LLM_PROVIDER`, `EMBEDDING_PROVIDER`, `OLLAMA_*` | `.env` |
+| OpenSearch (RAG) | `OPENSEARCH_URL`, `OPENSEARCH_INDEX`, `OPENSEARCH_VECTOR_DIMS`, `OPENSEARCH_PASSWORD` 🔐 | `.env` / secrets |
+| Truy hồi / Rerank | `RETRIEVE_TOP_K`, `RERANK_*` (🔐 `RERANK_API_KEY`) | `.env` / secrets |
+| Chatbot (chat/mind map/quota/files) | `GEMINI_CHAT_MODEL`, `CHAT_MINDMAP_ENABLED`, `GEMINI_MINDMAP_MODEL`, `CHAT_ATTACHED_FILES_*`, `GEMINI_FILE_TTL_HOURS` | `.env` |
+| LightRAG / KG | `LIGHTRAG_ENABLED`, `LIGHTRAG_PG_*`, `LIGHTRAG_NEO4J_*` (🔐 passwords) | `.env` / secrets |
+
+Xem giá trị mặc định và ghi chú chi tiết trực tiếp trong [.env.example](.env.example). Ý nghĩa từng biến theo tính năng: xem README của module tương ứng, chủ yếu [modules/chatbot/README.md](modules/chatbot/README.md).
